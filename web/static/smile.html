@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Smile — Argentum</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,360&family=IBM+Plex+Mono:wght@400&family=IBM+Plex+Sans:wght@400&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="top">
+      <a class="wordmark" href="/"><span class="bar"></span>Argentum</a>
+      <nav>
+        <a href="/">Front</a>
+        <a href="/lab">Lab</a>
+        <a href="/smile" aria-current="page">Smile</a>
+        <a href="/rates">Rates</a>
+        <a href="/bond">Bond</a>
+        <a href="/docs">Docs</a>
+      </nav>
+    </header>
+    <main class="wrap desk">
+      <form class="panel" id="form">
+        <p class="eyebrow">Hagan SABR</p>
+        <label>Forward <input name="forward" type="number" step="0.001" value="0.03" /></label>
+        <label>Expiry <input name="texp" type="number" step="0.1" value="5" /></label>
+        <label>Alpha <input name="alpha" type="number" step="0.001" value="0.04" /></label>
+        <label>Beta <input name="beta" type="number" step="0.05" value="0.5" min="0" max="1" /></label>
+        <label>Rho <input name="rho" type="number" step="0.05" value="-0.3" min="-0.999" max="0.999" /></label>
+        <label>Nu <input name="nu" type="number" step="0.01" value="0.5" /></label>
+        <button class="btn" type="submit">Build smile</button>
+        <p class="err" id="err"></p>
+      </form>
+      <div>
+        <canvas class="chart" id="chart" width="900" height="360" aria-label="SABR implied volatility smile"></canvas>
+        <div style="max-height: 360px; overflow: auto; border: 1px solid var(--line); margin-top: 12px">
+          <table class="data" id="table"></table>
+        </div>
+      </div>
+    </main>
+    <footer>Argentum Smile · Hagan 2002 lognormal expansion</footer>
+    <script src="/charts.js"></script>
+    <script src="/smile.js"></script>
+  </body>
+</html>

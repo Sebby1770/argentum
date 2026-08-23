@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#08090b" />
+    <title>Argentum — a production pricing library</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,360;9..144,500&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="top">
+      <a class="wordmark" href="/"><span class="bar" aria-hidden="true"></span>Argentum</a>
+      <nav aria-label="Studio">
+        <a href="/" aria-current="page">Front</a>
+        <a href="/lab">Lab</a>
+        <a href="/smile">Smile</a>
+        <a href="/rates">Rates</a>
+        <a href="/bond">Bond</a>
+        <a href="/docs">Docs</a>
+      </nav>
+    </header>
+
+    <main id="main">
+      <div class="wrap hero">
+        <div>
+          <p class="eyebrow">Python · NumPy · v1.1</p>
+          <h1>The desk library.</h1>
+          <p class="lede">
+            Argentum prices vanillas, smiles, swaps, bonds, and credit with the same
+            hygiene a desk actually needs: ISDA day counts, TARGET2, dual-curve
+            discounting, and implied vol that round-trips. No SWIG. No silent NaNs.
+          </p>
+          <div class="cta-row">
+            <a class="btn" href="/lab">Open the lab</a>
+            <a class="btn ghost" href="/docs">Read the identities</a>
+          </div>
+        </div>
+        <figure class="plate">
+          <img src="/media/silver.jpg" alt="Brushed argent silver plate" width="960" height="540" />
+          <figcaption>Argentum — Latin for silver</figcaption>
+        </figure>
+      </div>
+
+      <dl class="tape wrap" id="tape" aria-label="Live ATM Black–Scholes mark">
+        <div>
+          <dt>ATM call</dt>
+          <dd id="t-npv">—</dd>
+        </div>
+        <div>
+          <dt>Delta</dt>
+          <dd id="t-delta">—</dd>
+        </div>
+        <div>
+          <dt>Vega</dt>
+          <dd id="t-vega">—</dd>
+        </div>
+        <div>
+          <dt>Implied vol</dt>
+          <dd>20.0000%</dd>
+        </div>
+      </dl>
+
+      <section class="section wrap">
+        <h2>What it marks</h2>
+        <div class="books">
+          <article class="card">
+            <h3>Equity / FX</h3>
+            <ul>
+              <li>Black–Scholes with a full greek suite</li>
+              <li>Americans, barriers, lookbacks, Asians</li>
+              <li>Quanto, escrowed dividends</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Rates</h3>
+            <ul>
+              <li>Log-discount bootstrap, dual curve</li>
+              <li>IRS, caps, European swaptions</li>
+              <li>SABR and Bachelier</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Credit · vol</h3>
+            <ul>
+              <li>ISDA-style CDS</li>
+              <li>Heston COS, raw SVI</li>
+              <li>Variance-swap log contract</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="section wrap">
+        <h2>House rules</h2>
+        <dl class="rules">
+          <dt>01</dt>
+          <dd>Evaluation date is an argument. Never a process global.</dd>
+          <dt>02</dt>
+          <dd>Discounting and forecasting are separate curves.</dd>
+          <dt>03</dt>
+          <dd>Day counts follow the 2006 ISDA Definitions.</dd>
+          <dt>04</dt>
+          <dd>Implied vol of a model price returns the input vol.</dd>
+          <dt>05</dt>
+          <dd>Domain errors raise. They do not return NaN.</dd>
+        </dl>
+      </section>
+
+      <section class="section wrap">
+        <h2>Thirty seconds to a number</h2>
+        <pre><code>from argentum import OptionType, price, greeks
+
+npv = price(100, 100, 0.05, 0.0, 0.20, 1.0, OptionType.CALL)
+# 10.45058357
+g = greeks(100, 100, 0.05, 0.0, 0.20, 1.0, OptionType.CALL)</code></pre>
+      </section>
+    </main>
+    <footer>Argentum Studio · local desk · not a live market</footer>
+    <script src="/home.js"></script>
+  </body>
+</html>

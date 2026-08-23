@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Docs — Argentum</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,360&family=IBM+Plex+Mono:wght@400&family=IBM+Plex+Sans:wght@400&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="top">
+      <a class="wordmark" href="/"><span class="bar"></span>Argentum</a>
+      <nav>
+        <a href="/">Front</a>
+        <a href="/lab">Lab</a>
+        <a href="/smile">Smile</a>
+        <a href="/rates">Rates</a>
+        <a href="/bond">Bond</a>
+        <a href="/docs" aria-current="page">Docs</a>
+      </nav>
+    </header>
+    <main class="wrap section">
+      <p class="eyebrow">Identities</p>
+      <h1>What the numbers mean</h1>
+      <p class="lede">
+        The ATM Black–Scholes call with <code>S=K=100</code>, <code>r=5%</code>, <code>σ=20%</code>,
+        <code>T=1</code> is <strong>10.45058357</strong>. That is not a fitted constant. It is
+        <code>S N(d1) − K e^{−rT} N(d2)</code> with <code>d1=0.35</code>, <code>d2=0.15</code>.
+      </p>
+      <div class="books" style="margin-top: 36px">
+        <article class="card">
+          <h3>Day counts</h3>
+          <p>Act/365F, Act/360, Act/Act ISDA, 30U/360, 30E/360 ISDA. The 2003-11-01 / 2004-05-01 ISDA split is a unit test.</p>
+        </article>
+        <article class="card">
+          <h3>SABR</h3>
+          <p>Hagan 2002 lognormal expansion, ATM and F≠K branches, z/x → 1 when ν=0. Shifted SABR is the same formula on F+s.</p>
+        </article>
+        <article class="card">
+          <h3>Heston</h3>
+          <p>Fang–Oosterlee COS with the little-Heston-trap characteristic function so the complex logarithm stays principal-valued.</p>
+        </article>
+      </div>
+      <p class="note" style="margin-top: 28px">
+        Full formula sheet: <code>docs/THEORY.md</code> in the repo. This studio is a local desk,
+        not investment advice, and not a substitute for model validation.
+      </p>
+      <pre style="margin-top: 28px"><code>python3 -m argentum studio --port 8787
+python3 -m pytest -q
+python3 -m argentum vanilla --spot 100 --strike 100 --rate 0.05 --vol 0.2 --texp 1</code></pre>
+    </main>
+    <footer>Argentum Docs · v1.1</footer>
+  </body>
+</html>
