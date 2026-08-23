@@ -5,10 +5,11 @@ from argentum.math.interpolation import cubic, linear, log_linear, make_interpol
 from argentum.math.linalg import thomas
 from argentum.math.random import SobolEngine, sobol_normal
 from argentum.math.solvers import brent, bracket_and_solve, halley, newton
-from argentum.math.special import black_d1_d2, norm_cdf, norm_inv, norm_pdf, norm_sf
+from argentum.math.special import bivariate_cdf, black_d1_d2, norm_cdf, norm_inv, norm_pdf, norm_sf
 
 __all__ = [
     "SobolEngine",
+    "bivariate_cdf",
     "black_d1_d2",
     "bracket_and_solve",
     "brent",

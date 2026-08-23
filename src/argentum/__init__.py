@@ -30,7 +30,7 @@ from argentum.termstructures import (
 from argentum.time import TARGET, Date, DayCount, Period, calendar, make_schedule, tenor
 from argentum.types import Compounding, ExerciseStyle, Frequency, Greeks, OptionType, PriceResult
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 __all__ = [
     "TARGET",

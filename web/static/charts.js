@@ -10,8 +10,9 @@ function lineChart(canvas, xs, ys, opts) {
   const pad = { l: 48, r: 16, t: 16, b: 28 };
   const xmin = Math.min(...xs);
   const xmax = Math.max(...xs);
-  const ymin = Math.min(0, ...ys);
-  const ymax = Math.max(...ys);
+  const extra = opts.second || [];
+  const ymin = Math.min(0, ...ys, ...extra);
+  const ymax = Math.max(...ys, ...extra);
   const xspan = xmax - xmin || 1;
   const yspan = ymax - ymin || 1;
   const xOf = (x) => pad.l + ((x - xmin) / xspan) * (w - pad.l - pad.r);
@@ -32,6 +33,18 @@ function lineChart(canvas, xs, ys, opts) {
     else ctx.lineTo(px, py);
   });
   ctx.stroke();
+  if (opts.second && opts.second.length === xs.length) {
+    ctx.strokeStyle = opts.secondColor || "rgba(185,195,204,0.5)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    xs.forEach((x, i) => {
+      const px = xOf(x);
+      const py = yOf(opts.second[i]);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    });
+    ctx.stroke();
+  }
   if (opts.zero) {
     ctx.strokeStyle = "rgba(236,230,216,0.2)";
     ctx.beginPath();

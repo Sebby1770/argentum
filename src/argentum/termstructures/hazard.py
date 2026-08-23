@@ -8,6 +8,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from argentum.errors import CurveError
+from argentum.math.solvers import newton
 from argentum.time.date import Date, DateLike, as_date
 from argentum.time.daycount import DayCount
 
@@ -84,3 +85,36 @@ def par_cds_spread(
     if den == 0.0:
         return 0.0
     return (1.0 - r) * num / den
+
+
+def bootstrap_hazard(
+    as_of: DateLike,
+    discount: object,
+    quotes: list[tuple[float, float]],
+    *,
+    recovery: float = 0.4,
+) -> HazardCurve:
+    """Boot a piecewise-constant hazard from ``(maturity_years, par_spread)`` quotes."""
+    as_of_d = as_date(as_of)
+    if not quotes:
+        raise CurveError("need at least one CDS quote")
+    times: list[float] = []
+    hazards: list[float] = []
+    for maturity, spread in quotes:
+        if maturity <= 0.0 or spread < 0.0:
+            raise CurveError("CDS quotes must have positive maturity and non-negative spread")
+
+        def obj(h: float, t=maturity, s=spread, ts=tuple(times), hs=tuple(hazards)) -> float:
+            curve = HazardCurve(
+                as_of_d,
+                np.array(ts + (t,), dtype=float),
+                np.array(hs + (max(h, 0.0),), dtype=float),
+                recovery=recovery,
+            )
+            return par_cds_spread(curve, discount, t, recovery=recovery) - s
+
+        guess = spread / max(1.0 - recovery, 0.05)
+        h_star = newton(obj, max(guess, 1e-6), lower=0.0, upper=5.0, tol=1e-10)
+        times.append(maturity)
+        hazards.append(max(h_star, 0.0))
+    return HazardCurve(as_of_d, np.array(times, dtype=float), np.array(hazards, dtype=float), recovery=recovery)

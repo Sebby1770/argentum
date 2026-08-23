@@ -444,6 +444,78 @@ footer {
   letter-spacing: 0.08em;
 }
 
+#cmd-palette {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 9, 11, 0.72);
+  display: grid;
+  place-items: start center;
+  padding-top: 12vh;
+  z-index: 40;
+}
+
+#cmd-palette[hidden] {
+  display: none;
+}
+
+.cmd-card {
+  width: min(480px, calc(100% - 32px));
+  background: var(--ink-2);
+  border: 1px solid var(--line-strong);
+  padding: 18px;
+}
+
+.cmd-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+}
+
+.cmd-card li a {
+  display: block;
+  padding: 8px 4px;
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border-bottom: 1px solid var(--line);
+}
+
+.engines {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin: 12px 0 18px;
+}
+
+.heat {
+  display: grid;
+  gap: 2px;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.heat-row {
+  display: grid;
+  grid-template-columns: 48px repeat(7, 1fr);
+  gap: 2px;
+}
+
+.heat-cell {
+  padding: 8px 4px;
+  text-align: center;
+  background: #12141a;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 900px) {
+  .engines {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 @media (max-width: 900px) {
   .hero,
   .desk,

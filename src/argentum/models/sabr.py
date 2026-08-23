@@ -167,3 +167,23 @@ def sabr_smile(
         vol = sabr_implied_vol(forward, k, texp, alpha, beta, rho, nu, shift=shift)
         out.append({"strike": k, "vol": vol, "moneyness": k / forward if forward else 0.0})
     return out
+
+
+def sabr_surface(
+    forward: float,
+    tenors: list[float],
+    strikes: list[float],
+    alpha: float,
+    beta: float,
+    rho: float,
+    nu: float,
+    *,
+    shift: float = 0.0,
+) -> list[dict[str, float]]:
+    """Strike × expiry grid of Hagan SABR vols."""
+    rows: list[dict[str, float]] = []
+    for texp in tenors:
+        for k in strikes:
+            vol = sabr_implied_vol(forward, k, texp, alpha, beta, rho, nu, shift=shift)
+            rows.append({"texp": texp, "strike": k, "vol": vol, "moneyness": k / forward if forward else 0.0})
+    return rows

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import mimetypes
 import threading
 import time
@@ -17,13 +18,23 @@ from argentum import __version__
 from argentum.errors import ArgentumError
 from argentum.instruments.bond import Bond
 from argentum.instruments.swap import InterestRateSwap
+from argentum.book import Book, VanillaPosition
+from argentum.engines.fd import fd_price
+from argentum.engines.montecarlo import gbm_european
+from argentum.instruments.cds import CreditDefaultSwap
 from argentum.models.barriers import barrier_price
 from argentum.models.binomial import leisen_reimer_price
+from argentum.models.bjerksund_stensland import bjerksund_stensland
 from argentum.models.black_scholes import greeks, implied_vol, price
+from argentum.models.compound import forward_start, geske_compound
 from argentum.models.heston import HestonParams, heston_price
 from argentum.models.lookback import floating_lookback
-from argentum.models.sabr import sabr_smile
+from argentum.models.multiasset import kirk_spread, margrabe
+from argentum.models.sabr import sabr_smile, sabr_surface
+from argentum.models.touch import no_touch, one_touch
 from argentum.models.variance import black_variance_strike, log_contract_fair_variance
+from argentum.scenario import default_shocks, scenario_table
+from argentum.termstructures.hazard import HazardCurve, bootstrap_hazard
 from argentum.termstructures.yield_curve import YieldCurve
 from argentum.time.date import Date
 from argentum.types import ExerciseStyle, Frequency, OptionType
@@ -63,14 +74,21 @@ def vanilla_payload(values: dict[str, Any]) -> dict[str, Any]:
     opt = OptionType.PUT if _s(values, "type", "call").lower().startswith("p") else OptionType.CALL
     npv = price(spot, strike, rate, div, vol, texp, opt)
     g = greeks(spot, strike, rate, div, vol, texp, opt)
-    tree = leisen_reimer_price(spot, strike, rate, div, vol, texp, 201, opt, ExerciseStyle.EUROPEAN)
-    # payoff samples
+    style = ExerciseStyle.AMERICAN if _s(values, "style", "european").lower().startswith("a") else ExerciseStyle.EUROPEAN
+    tree = leisen_reimer_price(spot, strike, rate, div, vol, texp, 201, opt, style)
+    fd = fd_price(spot, strike, rate, div, vol, texp, opt, style, n_space=81, n_time=60)
+    mc = gbm_european(spot, strike, rate, div, vol, texp, opt, n_paths=4000, sobol=False, antithetic=True)
+    american = bjerksund_stensland(spot, strike, rate, div, vol, texp, opt)
     ks = [strike * (0.6 + 0.04 * i) for i in range(21)]
     payoff = [max(k - strike, 0.0) if opt is OptionType.CALL else max(strike - k, 0.0) for k in ks]
     values_path = [price(k, strike, rate, div, vol, texp, opt) for k in ks]
     return {
         "npv": npv,
         "tree": tree,
+        "fd": fd,
+        "mc": mc.npv,
+        "mc_error": mc.std_error,
+        "american": american,
         "intrinsic": max(spot - strike, 0.0) if opt is OptionType.CALL else max(strike - spot, 0.0),
         "greeks": g.as_dict(),
         "spot": spot,
@@ -78,6 +96,7 @@ def vanilla_payload(values: dict[str, Any]) -> dict[str, Any]:
         "vol": vol,
         "texp": texp,
         "type": opt.value,
+        "style": style.value,
         "grid": {"spot": ks, "payoff": payoff, "value": values_path},
     }
 
@@ -168,6 +187,12 @@ def extras_payload(values: dict[str, Any]) -> dict[str, Any]:
         "floating_lookback_call": look,
         "variance_fair": fair_var,
         "variance_flat": black_variance_strike(vol),
+        "one_touch": one_touch(spot, barrier, rate, 0.0, vol, texp, cash=1.0),
+        "no_touch": no_touch(spot, barrier, rate, 0.0, vol, texp, cash=1.0),
+        "margrabe": margrabe(spot, strike, vol, vol, 0.4, texp),
+        "geske": geske_compound(spot, 8.0, strike, rate, 0.0, vol, 0.5, texp),
+        "forward_start": forward_start(spot, rate, 0.0, vol, 0.25, texp),
+        "kirk": kirk_spread(spot, 90.0, 5.0, vol, vol, 0.5, texp, df=math.exp(-rate * texp)),
     }
 
 
@@ -180,6 +205,84 @@ def implied_payload(values: dict[str, Any]) -> dict[str, Any]:
     texp = _f(values, "texp", 1.0)
     opt = OptionType.PUT if _s(values, "type", "call").lower().startswith("p") else OptionType.CALL
     return {"vol": implied_vol(prem, spot, strike, rate, div, texp, opt)}
+
+
+def surface_payload(values: dict[str, Any]) -> dict[str, Any]:
+    fwd = _f(values, "forward", 0.03)
+    alpha = _f(values, "alpha", 0.04)
+    beta = _f(values, "beta", 0.5)
+    rho = _f(values, "rho", -0.3)
+    nu = _f(values, "nu", 0.5)
+    tenors = [0.25, 0.5, 1.0, 2.0, 5.0, 10.0]
+    strikes = [fwd * m for m in (0.6, 0.8, 0.9, 1.0, 1.1, 1.2, 1.4)]
+    grid = sabr_surface(fwd, tenors, strikes, alpha, beta, rho, nu)
+    return {"forward": fwd, "tenors": tenors, "strikes": strikes, "grid": grid}
+
+
+def credit_payload(values: dict[str, Any]) -> dict[str, Any]:
+    as_of = Date(2026, 8, 24)
+    hazard_rate = _f(values, "hazard", 0.012)
+    recovery = _f(values, "recovery", 0.4)
+    coupon = _f(values, "coupon", 0.01)
+    curve_rate = _f(values, "curve", 0.02)
+    years = _f(values, "years", 5.0)
+    disc = YieldCurve.flat(as_of, curve_rate)
+    hz = HazardCurve.flat(as_of, hazard_rate, recovery=recovery)
+    start = as_of.add_days(27)
+    end = as_of.add_years(int(years))
+    cds = CreditDefaultSwap(start, end, coupon=coupon, recovery=recovery, notional=10_000_000.0)
+    quotes = [(1.0, hazard_rate * (1.0 - recovery) * 0.95), (3.0, hazard_rate * (1.0 - recovery)), (5.0, hazard_rate * (1.0 - recovery) * 1.05)]
+    boot = bootstrap_hazard(as_of, disc, quotes, recovery=recovery)
+    return {
+        "par": cds.par_spread(disc, hz),
+        "npv": cds.npv(disc, hz),
+        "upfront": cds.upfront(disc, hz),
+        "protection": cds.protection_leg(disc, hz),
+        "annuity": cds.risky_annuity(disc, hz),
+        "boot_hazards": [{"t": float(t), "h": float(h)} for t, h in zip(boot.times, boot.hazards)],
+        "recovery": recovery,
+        "hazard": hazard_rate,
+    }
+
+
+def book_payload(values: dict[str, Any]) -> dict[str, Any]:
+    raw = values.get("positions")
+    book = Book()
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except json.JSONDecodeError:
+            raw = None
+    if not isinstance(raw, list) or not raw:
+        book.add(VanillaPosition(1, 100, 100, 0.05, 0.0, 0.2, 1.0, OptionType.CALL, "atm"))
+        book.add(VanillaPosition(-1, 100, 110, 0.05, 0.0, 0.2, 1.0, OptionType.CALL, "call-spread"))
+        book.add(VanillaPosition(1, 100, 90, 0.05, 0.0, 0.2, 1.0, OptionType.PUT, "put"))
+    else:
+        for row in raw:
+            if not isinstance(row, dict):
+                continue
+            kind = OptionType.PUT if str(row.get("type", "call")).lower().startswith("p") else OptionType.CALL
+            book.add(
+                VanillaPosition(
+                    quantity=_f(row, "qty", 1.0),
+                    spot=_f(row, "spot", 100.0),
+                    strike=_f(row, "strike", 100.0),
+                    rate=_f(row, "rate", 0.05),
+                    div=_f(row, "div", 0.0),
+                    vol=_f(row, "vol", 0.2),
+                    texp=_f(row, "texp", 1.0),
+                    option_type=kind,
+                    tag=_s(row, "tag", ""),
+                )
+            )
+    marked = book.price()
+    shocks = default_shocks()
+    return {
+        "npv": marked.npv,
+        "greeks": marked.greeks.as_dict() if marked.greeks else {},
+        "n": len(book.positions),
+        "scenarios": scenario_table(book, shocks),
+    }
 
 
 def health_payload() -> dict[str, Any]:
@@ -273,6 +376,12 @@ class StudioHandler(BaseHTTPRequestHandler):
                     self._json(extras_payload(qs))
                 elif path == "/api/iv":
                     self._json(implied_payload(qs))
+                elif path == "/api/surface":
+                    self._json(surface_payload(qs))
+                elif path == "/api/credit":
+                    self._json(credit_payload(qs))
+                elif path == "/api/book":
+                    self._json(book_payload(qs))
                 else:
                     self._json({"error": "not found"}, 404)
             except (ArgentumError, ValueError, ZeroDivisionError, OverflowError) as exc:
@@ -282,14 +391,17 @@ class StudioHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
-        if parsed.path != "/api/vanilla":
-            self._json({"error": "not found"}, 404)
-            return
         if _rate_limited(self.client_address[0]):
             self._json({"error": "rate limited"}, HTTPStatus.TOO_MANY_REQUESTS)
             return
         try:
-            self._json(vanilla_payload(self._read_json()))
+            body = self._read_json()
+            if parsed.path == "/api/vanilla":
+                self._json(vanilla_payload(body))
+            elif parsed.path == "/api/book":
+                self._json(book_payload(body))
+            else:
+                self._json({"error": "not found"}, 404)
         except (ArgentumError, ValueError) as exc:
             self._json({"error": str(exc)}, 400)
 
@@ -303,6 +415,12 @@ class StudioHandler(BaseHTTPRequestHandler):
             "rates": "rates.html",
             "bond": "bond.html",
             "docs": "docs.html",
+            "heston": "heston.html",
+            "credit": "credit.html",
+            "book": "book.html",
+            "surface": "surface.html",
+            "manifest.json": "manifest.json",
+            "sw.js": "sw.js",
         }
         rel = aliases.get(rel, rel)
         target = (STATIC / rel).resolve()

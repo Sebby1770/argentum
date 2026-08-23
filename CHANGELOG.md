@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.2.0 — 2026-08-23
+
+### Added
+- Margrabe exchange, Kirk spread, Geske compound, Rubinstein chooser, forward-start
+- One-touch / no-touch, Dupire local vol (Gatheral) from a SABR slice
+- Piecewise hazard bootstrap from par CDS quotes
+- Book scenario engine (spot / vol / rate shocks)
+- Studio pages: Heston, credit, blotter, SABR surface heatmap
+- Lab now reports analytic, tree, FD, MC and an American mark; shareable query string
+- Command palette (K), PWA, `argentum heston`
+
+### Changed
+- Version **1.2.0**
+
 ## 1.1.0 — 2026-08-23
 
 ### Added

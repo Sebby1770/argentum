@@ -160,6 +160,31 @@ def black_d1_d2(
     return d1, d2
 
 
+def bivariate_cdf(x: float, y: float, rho: float) -> float:
+    """Standard bivariate normal CDF via the Owen/Drezner integral in ρ."""
+    if rho > 0.999999:
+        return norm_cdf(min(x, y))
+    if rho < -0.999999:
+        return max(norm_cdf(x) - norm_cdf(-y), 0.0)
+    from argentum.math.integration import gauss_legendre
+
+    hx, hy = float(x), float(y)
+    n_x, n_y = norm_cdf(hx), norm_cdf(hy)
+
+    def integrand(s: float) -> float:
+        den = 1.0 - s * s
+        if den <= 1e-16:
+            return 0.0
+        expo = -(hx * hx + hy * hy - 2.0 * s * hx * hy) / (2.0 * den)
+        return math.exp(expo) / math.sqrt(den)
+
+    lo, hi = (0.0, rho) if rho >= 0.0 else (rho, 0.0)
+    integral = gauss_legendre(integrand, lo, hi, 16)
+    if rho < 0.0:
+        integral = -integral
+    return n_x * n_y + integral / (2.0 * math.pi)
+
+
 def discount_factor(rate: float, texp: float, compounding: str = "continuous") -> float:
     if texp == 0.0:
         return 1.0

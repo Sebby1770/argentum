@@ -1,0 +1,9 @@
+{
+  "name": "Argentum Studio",
+  "short_name": "Argentum",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#08090b",
+  "theme_color": "#08090b",
+  "icons": [{ "src": "/favicon.svg", "sizes": "32x32", "type": "image/svg+xml" }]
+}

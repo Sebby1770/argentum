@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Lab — Argentum</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.json" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -40,17 +41,25 @@
             <option value="put">Put</option>
           </select>
         </label>
+        <label>Style
+          <select name="style">
+            <option value="european">European</option>
+            <option value="american">American tree/FD</option>
+          </select>
+        </label>
         <button class="btn" type="submit">Mark</button>
         <p class="err" id="err"></p>
         <p class="note">Analytic Black–Scholes plus a 201-step Leisen–Reimer tree on the same inputs.</p>
       </form>
       <div>
         <div class="metrics" id="metrics"></div>
+        <div class="engines" id="engines"></div>
         <canvas class="chart" id="chart" width="900" height="360" aria-label="Value versus spot"></canvas>
         <p class="note" id="compare"></p>
       </div>
     </main>
     <footer>Argentum Lab · numbers from /api/vanilla</footer>
+    <script src="/chrome.js"></script>
     <script src="/charts.js"></script>
     <script src="/lab.js"></script>
   </body>

@@ -43,13 +43,13 @@ argentum vanilla --spot 100 --strike 100 --rate 0.05 --vol 0.2 --texp 1
 argentum studio --port 8787
 ```
 
-Open [http://127.0.0.1:8787](http://127.0.0.1:8787) for the front page. Lab, SABR smile, rates, and bond pages all mark through the same Python engines — they are not mocks.
+Open [http://127.0.0.1:8787](http://127.0.0.1:8787) for the front page. Lab, smile, surface, Heston, rates, bond, credit, and the blotter all mark through the same Python engines — they are not mocks. Press `K` for the jump palette.
 
 ## What you can price
 
 | Book | Instruments | Engines |
 |------|-------------|---------|
-| Equity / FX / commodity | European vanilla, digital, barrier, lookback, geometric & arithmetic Asian, American, quanto | BSM analytics, CRR / Leisen–Reimer, Bjerksund–Stensland 2002, Crank–Nicolson, Sobol MC |
+| Equity / FX / commodity | European vanilla, digital, barrier, lookback, geometric & arithmetic Asian, American, quanto, Geske, Margrabe, Kirk, chooser, forward-start, one-touch | BSM analytics, CRR / Leisen–Reimer, Bjerksund–Stensland 2002, Crank–Nicolson, Sobol MC |
 | Rates | Deposits, FRAs, vanilla IRS (dual curve), caps/floors, European swaptions | Log-discount bootstrap, Black-76, Bachelier, SABR |
 | Credit | CDS (protection, risky PV01, par, SNAC-style upfront) | Piecewise-constant hazard |
 | Bonds | Fixed, zero; dirty/clean, YTM, Mac/Mod duration, convexity, Z-spread | Discount curve + analytic YTM |
@@ -109,6 +109,8 @@ argentum vanilla --spot 100 --strike 100 --rate 0.05 --vol 0.2 --texp 1
 argentum iv --price 10.45058357 --spot 100 --strike 100 --rate 0.05 --texp 1
 argentum bond --coupon 0.06 --ytm 0.05 --as-of 2016-08-15 --maturity 2026-08-15
 argentum swap --as-of 2026-08-24 --tenor 5Y --rate 0.04 --curve 0.04
+argentum heston --spot 100 --strike 100 --texp 1
+argentum studio --port 8787
 ```
 
 ## Layout

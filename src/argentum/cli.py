@@ -72,6 +72,17 @@ def build_parser() -> argparse.ArgumentParser:
     studio = sub.add_parser("studio", help="Open the Argentum Studio web desk")
     studio.add_argument("--host", default="127.0.0.1")
     studio.add_argument("--port", type=int, default=8787)
+
+    heston = sub.add_parser("heston", help="Heston COS European call")
+    heston.add_argument("--spot", type=float, default=100.0)
+    heston.add_argument("--strike", type=float, default=100.0)
+    heston.add_argument("--rate", type=float, default=0.03)
+    heston.add_argument("--texp", type=float, default=1.0)
+    heston.add_argument("--kappa", type=float, default=1.5)
+    heston.add_argument("--theta", type=float, default=0.04)
+    heston.add_argument("--sigma", type=float, default=0.4)
+    heston.add_argument("--rho", type=float, default=-0.5)
+    heston.add_argument("--v0", type=float, default=0.04)
     return p
 
 
@@ -136,6 +147,13 @@ def main(argv: list[str] | None = None) -> int:
         from argentum.studio import serve
 
         serve(args.host, args.port)
+        return 0
+    if args.cmd == "heston":
+        from argentum.models.heston import HestonParams, heston_price
+        from argentum.types import OptionType as OT
+
+        params = HestonParams(args.kappa, args.theta, args.sigma, args.rho, args.v0)
+        print(f"{heston_price(args.spot, args.strike, args.rate, 0.0, args.texp, params, OT.CALL):.8f}")
         return 0
     return 2
 
