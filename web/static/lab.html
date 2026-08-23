@@ -29,6 +29,8 @@
     <main class="wrap desk">
       <form class="panel" id="form">
         <p class="eyebrow">Vanilla desk</p>
+        <label>Symbol <input name="symbol" id="lab-symbol" placeholder="AAPL" autocomplete="off" /></label>
+        <button class="btn ghost" type="button" id="pull-spot">Pull last print</button>
         <label>Spot <input name="spot" type="number" step="0.1" value="100" /></label>
         <label>Strike <input name="strike" type="number" step="0.1" value="100" /></label>
         <label>Rate <input name="rate" type="number" step="0.001" value="0.05" /></label>
@@ -49,7 +51,7 @@
         </label>
         <button class="btn" type="submit">Mark</button>
         <p class="err" id="err"></p>
-        <p class="note">Analytic Black–Scholes plus a 201-step Leisen–Reimer tree on the same inputs.</p>
+        <p class="note">Pull last print uses the feed saved on Front. Analytic Black–Scholes plus tree, FD, and Monte Carlo on the same inputs.</p>
       </form>
       <div>
         <div class="metrics" id="metrics"></div>

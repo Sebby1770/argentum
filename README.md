@@ -43,7 +43,24 @@ argentum vanilla --spot 100 --strike 100 --rate 0.05 --vol 0.2 --texp 1
 argentum studio --port 8787
 ```
 
-Open [http://127.0.0.1:8787](http://127.0.0.1:8787) for the front page. Lab, smile, surface, Heston, rates, bond, credit, and the blotter all mark through the same Python engines — they are not mocks. Press `K` for the jump palette.
+Open [http://127.0.0.1:8787](http://127.0.0.1:8787). The front page is the desk
+brief: what the site is, what it does, how it helps, and a panel to **connect
+your own stock market**. Sources:
+
+- **Demo book** — offline, deterministic last print (no network)
+- **Stooq** — public daily close
+- **Your venue** — `GET https://your-exchange/api/quote/{symbol}` returning JSON
+  with `spot` / `last` / `price` / `close` (nested fields like `data.last` work).
+  Optional auth header. Localhost is welcome.
+
+```bash
+python3 examples/own_market.py --port 8791
+# Studio → Market → Your venue
+# URL: http://127.0.0.1:8791/quote/{symbol}
+# Header: Authorization  /  Bearer desk
+```
+
+The lab then marks options on that last print. Press `K` for the jump palette.
 
 ## What you can price
 
@@ -125,6 +142,8 @@ src/argentum/
   instruments/      bond, swap, option, cap/floor, swaption, CDS, FX
   risk/             DV01, key-rate buckets, VaR
   calibration/      Levenberg–Marquardt for SABR / SVI / Heston
+  feeds.py          demo book, Stooq, your HTTP JSON venue
+  studio.py         local desk (Front, lab, smile, book, …)
 ```
 
 ## Accuracy notes

@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.3.0 — 2026-08-23
+
+### Added
+- **Market feeds** — demo book, Stooq daily close, or a user’s own HTTP JSON venue (`{symbol}` URL, optional auth header)
+- Front page rewritten as a desk brief: what the site is, what it does, how it helps, how to connect a market, a four-step session
+- Sample venue `examples/own_market.py` so a matching engine can be faked in one command
+- Lab “Pull last print” uses the saved feed and marks ATM on that spot
+- `/api/quote`, `/api/feed`, `/api/mark`
+- Saved API keys are not replayed as the `••••` placeholder; demo/Stooq saves clear secrets
+
+### Changed
+- Version **1.3.0**
+
 ## 1.2.0 — 2026-08-23
 
 ### Added

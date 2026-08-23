@@ -69,4 +69,34 @@ form.addEventListener("submit", (event) => {
 });
 
 applyQuery();
+
+const pull = document.querySelector("#pull-spot");
+const symbolField = document.querySelector("#lab-symbol");
+if (pull) {
+  pull.addEventListener("click", async () => {
+    err.textContent = "";
+    const symbol = (symbolField && symbolField.value) || "AAPL";
+    const res = await fetch("/api/quote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ symbol }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      err.textContent = data.error || "quote failed";
+      return;
+    }
+    form.elements.namedItem("spot").value = data.quote.spot;
+    if (!form.elements.namedItem("strike").value) {
+      form.elements.namedItem("strike").value = data.quote.spot;
+    } else {
+      form.elements.namedItem("strike").value = data.quote.spot;
+    }
+    if (data.quote.vol) form.elements.namedItem("vol").value = data.quote.vol;
+    if (data.quote.rate != null) form.elements.namedItem("rate").value = data.quote.rate;
+    if (data.quote.div != null) form.elements.namedItem("div").value = data.quote.div;
+    await mark();
+  });
+}
+
 mark().catch(() => {});

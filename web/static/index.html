@@ -4,7 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#08090b" />
-    <title>Argentum — a production pricing library</title>
+    <meta
+      name="description"
+      content="Argentum is a local pricing desk. Connect a last print from a demo book, Stooq, or your own stock-market API, then mark options, swaps, bonds and CDS on this machine."
+    />
+    <title>Argentum — a desk you can point at your market</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="/manifest.json" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -19,29 +23,23 @@
     <a class="skip" href="#main">Skip to content</a>
     <header class="top">
       <a class="wordmark" href="/"><span class="bar" aria-hidden="true"></span>Argentum</a>
-      <nav aria-label="Studio">
-        <a href="/" aria-current="page">Front</a>
-        <a href="/lab">Lab</a>
-        <a href="/smile">Smile</a>
-        <a href="/rates">Rates</a>
-        <a href="/bond">Bond</a>
-        <a href="/docs">Docs</a>
-      </nav>
+      <nav aria-label="Studio"></nav>
     </header>
 
     <main id="main">
       <div class="wrap hero">
         <div>
-          <p class="eyebrow">Python · NumPy · v1.2</p>
-          <h1>The desk library.</h1>
+          <p class="eyebrow">Python · NumPy · Studio v1.3</p>
+          <h1>A desk you can point at your market.</h1>
           <p class="lede">
-            Argentum prices vanillas, smiles, swaps, bonds, and credit with the same
-            hygiene a desk actually needs: ISDA day counts, TARGET2, dual-curve
-            discounting, and implied vol that round-trips. No SWIG. No silent NaNs.
+            Argentum is a local pricing studio. You bring a last print — from a demo book,
+            a public close, or <em>your own stock market</em> — and it marks the option,
+            the swap, the bond, the CDS. Greeks, smiles, crash scenarios. Not a broker.
+            Not a data vendor. A desk that runs on this machine.
           </p>
           <div class="cta-row">
-            <a class="btn" href="/lab">Open the lab</a>
-            <a class="btn ghost" href="/book">Mark a book</a>
+            <a class="btn" href="#connect">Connect a market</a>
+            <a class="btn ghost" href="/lab">Open the lab</a>
           </div>
         </div>
         <figure class="plate">
@@ -50,7 +48,7 @@
         </figure>
       </div>
 
-      <dl class="tape wrap" id="tape" aria-label="Live ATM Black–Scholes mark">
+      <dl class="tape wrap" id="tape" aria-label="Live mark from the connected print">
         <div>
           <dt>ATM call</dt>
           <dd id="t-npv">—</dd>
@@ -64,10 +62,230 @@
           <dd id="t-vega">—</dd>
         </div>
         <div>
-          <dt>Implied vol</dt>
-          <dd>20.0000%</dd>
+          <dt id="t-spot-label">Spot</dt>
+          <dd id="t-spot">—</dd>
         </div>
       </dl>
+
+      <section class="section wrap" id="about">
+        <h2>What this site is</h2>
+        <div class="prose">
+          <p>
+            This is Argentum Studio: a window onto a Python derivatives library.
+            Under the glass sit ISDA day counts, TARGET2, dual-curve swaps, SABR,
+            Heston, barriers, lookbacks, CDS. Every number on this page was
+            computed here, by those engines — not by a spreadsheet, not by a
+            model in the cloud.
+          </p>
+          <p>
+            Most “pricing” sites are a Black–Scholes form and a hope. A desk
+            needs the boring things to be right: 30E/360 on a February
+            termination, OIS discounting of a Libor projection, implied vol that
+            round-trips, a CDS that accrues on default. Argentum does that work,
+            then lets you point it at a print you actually care about.
+          </p>
+          <p>
+            It will not send an order. It will not store your blotter in someone
+            else’s basement. Connect a market and the last trade becomes
+            <em>spot</em>. From there the question is the one a desk asks:
+            what is this worth, and what happens if the print moves.
+          </p>
+        </div>
+      </section>
+
+      <section class="section wrap" id="does">
+        <h2>What it does</h2>
+        <p class="lede" style="margin-top: 0">
+          A quote comes in. The library treats it as the underlying. Four engines
+          mark the same contract. You read a ticket, not a guess.
+        </p>
+        <ol class="pipeline">
+          <li>
+            <span>01</span>
+            <strong>Your market</strong>
+            <p>Demo book, Stooq close, or a JSON URL from the venue you run.</p>
+          </li>
+          <li>
+            <span>02</span>
+            <strong>Last print</strong>
+            <p><code>spot</code> / <code>last</code> / <code>price</code> / <code>close</code> becomes <em>S</em>.</p>
+          </li>
+          <li>
+            <span>03</span>
+            <strong>The engines</strong>
+            <p>Analytic, tree, finite difference, Monte Carlo — same inputs.</p>
+          </li>
+          <li>
+            <span>04</span>
+            <strong>The ticket</strong>
+            <p>NPV, delta, vega, a smile, a crash PnL. On this machine.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section class="section wrap" id="help">
+        <h2>How it can help</h2>
+        <div class="help-grid">
+          <article class="card">
+            <h3>Mark what you actually hold</h3>
+            <p>
+              Pull AAPL, or a ticker from your own matching engine, and the lab
+              prices an option on <em>that</em> print — four engines, one
+              contract, no copy-paste into Excel.
+            </p>
+          </article>
+          <article class="card">
+            <h3>See the greeks, not just the premium</h3>
+            <p>
+              Delta, vega, theta, volga, an American value. Enough to decide
+              whether a quote is tight, whether a hedge is sized, whether the
+              smile is lying to you.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Stress the book before the tape does</h3>
+            <p>
+              The blotter bumps spot, vol, and rates through the same positions.
+              A crash scenario is a button, not a spreadsheet you last updated
+              in March.
+            </p>
+          </article>
+          <article class="card">
+            <h3>Learn identities that do not drift</h3>
+            <p>
+              ATM 100 / 5% / 20% / 1y is 10.4506 because the formula says so,
+              and the tests refuse to ship if it moves. Use it as a desk, or as
+              a tutor that will not invent NaNs.
+            </p>
+          </article>
+        </div>
+        <div class="audiences">
+          <article>
+            <h3>If you trade</h3>
+            <p>Mark a live last. Size a hedge. See the crash before you eat it.</p>
+          </article>
+          <article>
+            <h3>If you build a market</h3>
+            <p>Point Studio at your matching engine. One JSON quote is enough.</p>
+          </article>
+          <article>
+            <h3>If you study</h3>
+            <p>The same numbers the papers quote, wired to a page you can feel.</p>
+          </article>
+          <article>
+            <h3>If you research</h3>
+            <p>SABR, SVI, Heston, Dupire — without standing up QuantLib first.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section wrap" id="connect">
+        <h2>Connect your market</h2>
+        <p class="lede" style="margin-top: 0">
+          Argentum does not come with a Bloomberg socket. It comes with a hook.
+          Give it a ticker and a source. The last print becomes the spot the
+          lab, the smile, and the blotter all share.
+        </p>
+        <div class="source-tiles">
+          <article>
+            <p class="eyebrow">Demo</p>
+            <h3>Offline book</h3>
+            <p>Deterministic SHA-256 last. Same ticker, same print, no network. Works on a plane.</p>
+          </article>
+          <article>
+            <p class="eyebrow">Stooq</p>
+            <h3>Public close</h3>
+            <p>Daily close from stooq.com. Delayed, free, good enough to walk a symbol through the desk.</p>
+          </article>
+          <article>
+            <p class="eyebrow">Your venue</p>
+            <h3>HTTP JSON</h3>
+            <p>GET a URL with <code>{symbol}</code>. Read a number. Optional auth header. Localhost is welcome.</p>
+          </article>
+        </div>
+        <div class="connect">
+          <form class="panel" id="feed-form">
+            <p class="eyebrow">Feed</p>
+            <label>Source
+              <select name="source" id="feed-source">
+                <option value="demo">Demo book (offline)</option>
+                <option value="stooq">Stooq (public daily close)</option>
+                <option value="http">Your venue (HTTP JSON)</option>
+              </select>
+            </label>
+            <p class="note" id="feed-hint">Offline SHA-256 book. Same ticker, same last, no network.</p>
+            <label>Symbol <input name="symbol" id="feed-symbol" value="AAPL" autocomplete="off" /></label>
+            <div id="http-fields" class="hidden-fields" hidden>
+              <label>Quote URL
+                <input name="url" id="feed-url" placeholder="https://your-venue/api/quote/{symbol}" />
+              </label>
+              <label>Spot field
+                <input name="field" id="feed-field" placeholder="spot  or  data.last" />
+              </label>
+              <label>Header name
+                <input name="header_name" id="feed-header-name" placeholder="Authorization" />
+              </label>
+              <label>Header value
+                <input name="header_value" id="feed-header-value" placeholder="Bearer …" autocomplete="off" />
+              </label>
+              <p class="note">
+                Put <code>{symbol}</code> in the path or query. Argentum GETs it
+                and reads <code>spot</code>, <code>last</code>, <code>price</code>,
+                or <code>close</code> — or the dotted field you name. Optional
+                <code>vol</code> / <code>rate</code> / <code>div</code> ride along.
+                A saved header shows as <code>••••</code> and is not sent as the
+                token. Only http and https; no <code>file://</code>.
+              </p>
+            </div>
+            <button class="btn" type="submit">Save and pull</button>
+            <p class="status" id="feed-status"></p>
+          </form>
+          <aside class="quote-card" aria-live="polite">
+            <p class="eyebrow">Last print</p>
+            <h3 id="q-symbol">—</h3>
+            <p class="print" id="q-spot">—</p>
+            <p class="note" id="q-meta">Choose a source and pull a symbol.</p>
+            <div class="cta-row">
+              <a class="btn" id="q-lab" href="/lab">Mark ATM in the lab</a>
+            </div>
+          </aside>
+        </div>
+        <div class="contract">
+          <div>
+            <p class="eyebrow">Shape of a quote</p>
+            <p class="note">
+              Your matching engine, a mock you already have, or
+              <code>python examples/own_market.py</code> — then set the URL to
+              <code>http://127.0.0.1:8791/quote/{symbol}</code>. Nested fields
+              work: <code>data.last</code>.
+            </p>
+          </div>
+          <pre><code>{
+  "symbol": "AAPL",
+  "spot": 227.14,
+  "vol": 0.22,
+  "rate": 0.05,
+  "div": 0.004,
+  "asof": "2026-08-21T20:00:00Z"
+}</code></pre>
+        </div>
+        <p class="note" style="margin-top: 22px">
+          Your venue stays yours. The API key never leaves this machine except as
+          the header you configured. Stooq is a public close, delayed, good for a
+          walkthrough. The demo book is deterministic so the desk still works on a
+          plane. This is a mark, not an order gateway.
+        </p>
+      </section>
+
+      <section class="section wrap" id="session">
+        <h2>A session</h2>
+        <ol class="walk">
+          <li>Connect a feed on this page. Demo is enough to see the shape of it.</li>
+          <li>Pull a symbol. The last print becomes the spot — watch the tape above.</li>
+          <li>Open the lab. It prices a call or put on that spot, four engines at once.</li>
+          <li>If you run a book, send the same spots into scenarios and watch PnL.</li>
+        </ol>
+      </section>
 
       <section class="section wrap">
         <h2>What it marks</h2>
@@ -107,7 +325,7 @@
           <dt>02</dt>
           <dd>Discounting and forecasting are separate curves.</dd>
           <dt>03</dt>
-          <dd>Day counts follow the 2006 ISDA Definitions.</dd>
+          <dd>A market feed supplies spots. It does not replace the model.</dd>
           <dt>04</dt>
           <dd>Implied vol of a model price returns the input vol.</dd>
           <dt>05</dt>
@@ -118,13 +336,15 @@
       <section class="section wrap">
         <h2>Thirty seconds to a number</h2>
         <pre><code>from argentum import OptionType, price, greeks
+from argentum.feeds import fetch_quote
 
-npv = price(100, 100, 0.05, 0.0, 0.20, 1.0, OptionType.CALL)
-# 10.45058357
-g = greeks(100, 100, 0.05, 0.0, 0.20, 1.0, OptionType.CALL)</code></pre>
+q = fetch_quote("AAPL", source="demo")
+# q = fetch_quote("AAPL", source="http", url="http://127.0.0.1:8791/quote/{symbol}")
+npv = price(q.spot, q.spot, 0.05, 0.0, 0.20, 1.0, OptionType.CALL)
+g = greeks(q.spot, q.spot, 0.05, 0.0, 0.20, 1.0, OptionType.CALL)</code></pre>
       </section>
     </main>
-    <footer>Argentum Studio · local desk · not a live market</footer>
+    <footer>Argentum Studio · local desk · not a broker and not a live exchange</footer>
     <script src="/chrome.js"></script>
     <script src="/home.js"></script>
   </body>

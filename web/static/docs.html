@@ -47,6 +47,15 @@
           <h3>Heston</h3>
           <p>Fang–Oosterlee COS with the little-Heston-trap characteristic function so the complex logarithm stays principal-valued.</p>
         </article>
+        <article class="card">
+          <h3>Your market</h3>
+          <p>
+            Studio pulls a last print from a demo book, Stooq, or any HTTP JSON
+            venue (<code>{symbol}</code> in the URL). That number is spot — not
+            an order. See Front → Connect a market, or
+            <code>python examples/own_market.py</code>.
+          </p>
+        </article>
       </div>
       <p class="note" style="margin-top: 28px">
         Full formula sheet: <code>docs/THEORY.md</code> in the repo. This studio is a local desk,
@@ -56,7 +65,7 @@
 python3 -m pytest -q
 python3 -m argentum vanilla --spot 100 --strike 100 --rate 0.05 --vol 0.2 --texp 1</code></pre>
     </main>
-    <footer>Argentum Docs · v1.2</footer>
+    <footer>Argentum Docs · v1.3</footer>
     <script src="/chrome.js"></script>
   </body>
 </html>

@@ -15,7 +15,8 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from argentum import __version__
-from argentum.errors import ArgentumError
+from argentum.errors import ArgentumError, MarketError
+from argentum.feeds import fetch_quote
 from argentum.instruments.bond import Bond
 from argentum.instruments.swap import InterestRateSwap
 from argentum.book import Book, VanillaPosition
@@ -41,6 +42,7 @@ from argentum.types import ExerciseStyle, Frequency, OptionType
 
 ROOT = Path(__file__).resolve().parents[2]
 STATIC = ROOT / "web" / "static"
+FEED_FILE = ROOT / "data" / "feed.json"
 RATE_LIMIT = 60
 RATE_WINDOW = 60.0
 _started = time.monotonic()
@@ -285,6 +287,112 @@ def book_payload(values: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def default_feed_config() -> dict[str, Any]:
+    return {
+        "source": "demo",
+        "url": "https://your-exchange.example/api/quote/{symbol}",
+        "field": "",
+        "header_name": "",
+        "header_value": "",
+        "symbol": "AAPL",
+    }
+
+
+def load_feed_config() -> dict[str, Any]:
+    cfg = default_feed_config()
+    if FEED_FILE.is_file():
+        try:
+            stored = json.loads(FEED_FILE.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            stored = {}
+        if isinstance(stored, dict):
+            cfg.update({k: stored[k] for k in cfg if k in stored})
+    return cfg
+
+
+def public_feed_config(cfg: dict[str, Any] | None = None) -> dict[str, Any]:
+    data = dict(cfg or load_feed_config())
+    stored = str(data.get("header_value") or "").strip()
+    secret = bool(stored) and stored != "••••"
+    data["header_value"] = "••••" if secret else ""
+    data["has_secret"] = secret
+    return data
+
+
+def save_feed_config(values: dict[str, Any]) -> dict[str, Any]:
+    cfg = load_feed_config()
+    for key in cfg:
+        if key in values and values[key] is not None:
+            incoming = values[key]
+            if key == "header_value" and str(incoming) == "••••":
+                continue
+            cfg[key] = incoming
+    cfg["source"] = str(cfg.get("source") or "demo").lower()
+    if cfg["source"] not in {"http", "custom", "own"}:
+        cfg["header_name"] = ""
+        cfg["header_value"] = ""
+    FEED_FILE.parent.mkdir(parents=True, exist_ok=True)
+    FEED_FILE.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+    return public_feed_config(cfg)
+
+
+def _resolve_header(values: dict[str, Any], cfg: dict[str, Any]) -> tuple[str | None, str | None]:
+    """Use a newly typed secret; treat the UI placeholder as 'keep the stored one'."""
+    name = _s(values, "header_name", cfg.get("header_name") or "") or None
+    incoming = _s(values, "header_value", "")
+    stored = str(cfg.get("header_value") or "")
+    if incoming in {"", "••••"}:
+        value = stored
+    else:
+        value = incoming
+    if value in {"", "••••"}:
+        value = ""
+    return name, (value or None)
+
+
+def quote_payload(values: dict[str, Any]) -> dict[str, Any]:
+    cfg = load_feed_config()
+    source = _s(values, "source", cfg.get("source") or "demo")
+    symbol = _s(values, "symbol", cfg.get("symbol") or "AAPL")
+    url = _s(values, "url", cfg.get("url") or "") or None
+    field = _s(values, "field", cfg.get("field") or "") or None
+    header_name, header_value = _resolve_header(values, cfg)
+    quote = fetch_quote(
+        symbol,
+        source=source,
+        url=url,
+        field=field,
+        header_name=header_name,
+        header_value=header_value,
+    )
+    return {"ok": True, "quote": quote.as_dict()}
+
+
+def mark_market_payload(values: dict[str, Any]) -> dict[str, Any]:
+    quoted = quote_payload(values)
+    q = quoted["quote"]
+    strike = _f(values, "strike", q["spot"])
+    texp = _f(values, "texp", 1.0)
+    vol = _f(values, "vol", q.get("vol") or 0.20)
+    rate = _f(values, "rate", q.get("rate") or 0.05)
+    div = _f(values, "div", q.get("div") or 0.0)
+    marked = vanilla_payload(
+        {
+            "spot": q["spot"],
+            "strike": strike,
+            "rate": rate,
+            "div": div,
+            "vol": vol,
+            "texp": texp,
+            "type": _s(values, "type", "call"),
+            "style": _s(values, "style", "european"),
+        }
+    )
+    marked["quote"] = q
+    marked["atm"] = True if abs(strike - q["spot"]) < 1e-9 * max(1.0, q["spot"]) else False
+    return marked
+
+
 def health_payload() -> dict[str, Any]:
     return {
         "ok": True,
@@ -382,9 +490,15 @@ class StudioHandler(BaseHTTPRequestHandler):
                     self._json(credit_payload(qs))
                 elif path == "/api/book":
                     self._json(book_payload(qs))
+                elif path == "/api/quote":
+                    self._json(quote_payload(qs))
+                elif path == "/api/feed":
+                    self._json({"ok": True, "feed": public_feed_config()})
+                elif path == "/api/mark":
+                    self._json(mark_market_payload(qs))
                 else:
                     self._json({"error": "not found"}, 404)
-            except (ArgentumError, ValueError, ZeroDivisionError, OverflowError) as exc:
+            except (ArgentumError, MarketError, ValueError, ZeroDivisionError, OverflowError) as exc:
                 self._json({"error": str(exc)}, 400)
             return
         self._static(path)
@@ -400,9 +514,15 @@ class StudioHandler(BaseHTTPRequestHandler):
                 self._json(vanilla_payload(body))
             elif parsed.path == "/api/book":
                 self._json(book_payload(body))
+            elif parsed.path == "/api/quote":
+                self._json(quote_payload(body))
+            elif parsed.path == "/api/feed":
+                self._json({"ok": True, "feed": save_feed_config(body)})
+            elif parsed.path == "/api/mark":
+                self._json(mark_market_payload(body))
             else:
                 self._json({"error": "not found"}, 404)
-        except (ArgentumError, ValueError) as exc:
+        except (ArgentumError, MarketError, ValueError) as exc:
             self._json({"error": str(exc)}, 400)
 
     def _static(self, path: str) -> None:
@@ -419,6 +539,7 @@ class StudioHandler(BaseHTTPRequestHandler):
             "credit": "credit.html",
             "book": "book.html",
             "surface": "surface.html",
+            "connect": "index.html",
             "manifest.json": "manifest.json",
             "sw.js": "sw.js",
         }

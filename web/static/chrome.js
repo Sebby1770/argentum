@@ -1,5 +1,6 @@
 const ARGENTUM_LINKS = [
   ["/", "Front"],
+  ["/#connect", "Market"],
   ["/lab", "Lab"],
   ["/smile", "Smile"],
   ["/surface", "Surface"],
@@ -20,8 +21,12 @@ function paintNav() {
   const nav = document.querySelector("header.top nav");
   if (!nav) return;
   const here = argentumPath();
+  const hash = window.location.hash;
   nav.innerHTML = ARGENTUM_LINKS.map(([href, label]) => {
-    const current = here === href ? ' aria-current="page"' : "";
+    let on = here === href;
+    if (href === "/#connect") on = here === "/" && hash === "#connect";
+    else if (href === "/") on = here === "/" && hash !== "#connect";
+    const current = on ? ' aria-current="page"' : "";
     return `<a href="${href}"${current}>${label}</a>`;
   }).join("");
 }
@@ -69,5 +74,6 @@ function registerSW() {
 }
 
 paintNav();
+window.addEventListener("hashchange", paintNav);
 ensurePalette();
 registerSW();
