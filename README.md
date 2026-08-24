@@ -47,17 +47,23 @@ Open [http://127.0.0.1:8787](http://127.0.0.1:8787). The front page is the desk
 brief: what the site is, what it does, how it helps, and a panel to **connect
 your own stock market**. Sources:
 
-- **Demo book** — offline, deterministic last print (no network)
+- **Demo book** — offline, deterministic last / bid / ask (no network)
 - **Stooq** — public daily close
-- **Your venue** — `GET https://your-exchange/api/quote/{symbol}` returning JSON
-  with `spot` / `last` / `price` / `close` (nested fields like `data.last` work).
-  Optional auth header. Localhost is welcome.
+- **Your venue** — `GET` JSON (or CSV). `spot` / `last` / `price` / `close`,
+  Polygon `results.p`, Finnhub `c`, IEX `latestPrice`, Yahoo chart, or a
+  bid/ask mid. `{symbol}` in the URL, `{key}` for a token. Optional auth
+  header. Localhost is welcome; cloud metadata hosts are not.
+- **Push** — `POST /api/ingest` from a matching engine.
+
+The adapter retries, caches a few seconds, and will serve a stale print if
+the venue blinks — it will not invent a number. Probe, watchlist, session tape
+are on Front.
 
 ```bash
-python3 examples/own_market.py --port 8791
+python3 examples/own_market.py --port 8791 --no-auth
+argentum quote AAPL --source http --url http://127.0.0.1:8791/quote/{symbol}
 # Studio → Market → Your venue
 # URL: http://127.0.0.1:8791/quote/{symbol}
-# Header: Authorization  /  Bearer desk
 ```
 
 The lab then marks options on that last print. Press `K` for the jump palette.
@@ -127,6 +133,7 @@ argentum iv --price 10.45058357 --spot 100 --strike 100 --rate 0.05 --texp 1
 argentum bond --coupon 0.06 --ytm 0.05 --as-of 2016-08-15 --maturity 2026-08-15
 argentum swap --as-of 2026-08-24 --tenor 5Y --rate 0.04 --curve 0.04
 argentum heston --spot 100 --strike 100 --texp 1
+argentum quote AAPL
 argentum studio --port 8787
 ```
 
@@ -142,8 +149,8 @@ src/argentum/
   instruments/      bond, swap, option, cap/floor, swaption, CDS, FX
   risk/             DV01, key-rate buckets, VaR
   calibration/      Levenberg–Marquardt for SABR / SVI / Heston
-  feeds.py          demo book, Stooq, your HTTP JSON venue
-  studio.py         local desk (Front, lab, smile, book, …)
+  feeds.py          demo, Stooq, vendor JSON, cache, circuit, ingest
+  studio.py         local desk (Front, lab, smile, book, watch, tape)
 ```
 
 ## Accuracy notes

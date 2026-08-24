@@ -1,4 +1,4 @@
-const CACHE = "argentum-studio-1.3";
+const CACHE = "argentum-studio-1.4";
 const ASSETS = ["/", "/styles.css", "/chrome.js", "/favicon.svg"];
 
 self.addEventListener("install", (event) => {

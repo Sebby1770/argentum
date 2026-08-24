@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from argentum.models.black_scholes import greeks as bs_greeks
 from argentum.models.black_scholes import price as bs_price
@@ -50,3 +50,12 @@ class Book:
         for pos in self.positions:
             groups.setdefault(pos.tag or "_", Book()).add(pos)
         return {tag: book.price() for tag, book in groups.items()}
+
+    def remap_spots(self, spots: dict[str, float]) -> Book:
+        """Rebuild the book using last prints keyed by position tag (or a global '_')."""
+        out = Book()
+        fallback = spots.get("_")
+        for pos in self.positions:
+            spot = spots.get(pos.tag, fallback if fallback is not None else pos.spot)
+            out.add(replace(pos, spot=spot))
+        return out

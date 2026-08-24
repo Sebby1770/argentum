@@ -8,6 +8,7 @@ import math
 import mimetypes
 import threading
 import time
+from collections import deque
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -16,7 +17,15 @@ from urllib.parse import parse_qs, urlparse
 
 from argentum import __version__
 from argentum.errors import ArgentumError, MarketError
-from argentum.feeds import fetch_quote
+from argentum.feeds import (
+    PRESETS,
+    Quote,
+    fetch_quote,
+    fetch_quotes,
+    ingest_quote,
+    probe_feed,
+    split_symbols,
+)
 from argentum.instruments.bond import Bond
 from argentum.instruments.swap import InterestRateSwap
 from argentum.book import Book, VanillaPosition
@@ -43,11 +52,13 @@ from argentum.types import ExerciseStyle, Frequency, OptionType
 ROOT = Path(__file__).resolve().parents[2]
 STATIC = ROOT / "web" / "static"
 FEED_FILE = ROOT / "data" / "feed.json"
-RATE_LIMIT = 60
+RATE_LIMIT = 120
 RATE_WINDOW = 60.0
 _started = time.monotonic()
 _rate_lock = threading.Lock()
 _rate_buckets: dict[str, list[float]] = {}
+_tape: deque[dict[str, Any]] = deque(maxlen=48)
+_tape_lock = threading.Lock()
 
 
 def _f(values: dict[str, Any], key: str, default: float) -> float:
@@ -295,7 +306,21 @@ def default_feed_config() -> dict[str, Any]:
         "header_name": "",
         "header_value": "",
         "symbol": "AAPL",
+        "preset": "",
+        "watchlist": "AAPL,MSFT,NVDA,GOOG",
     }
+
+
+def record_print(quote: Quote) -> None:
+    with _tape_lock:
+        _tape.appendleft({"ts": round(time.time(), 3), **quote.as_dict()})
+
+
+def tape_payload(limit: int = 16) -> dict[str, Any]:
+    n = max(1, min(int(limit), 48))
+    with _tape_lock:
+        prints = list(_tape)[:n]
+    return {"ok": True, "n": len(prints), "prints": prints}
 
 
 def load_feed_config() -> dict[str, Any]:
@@ -350,22 +375,59 @@ def _resolve_header(values: dict[str, Any], cfg: dict[str, Any]) -> tuple[str | 
     return name, (value or None)
 
 
-def quote_payload(values: dict[str, Any]) -> dict[str, Any]:
-    cfg = load_feed_config()
+def _feed_kwargs(values: dict[str, Any], cfg: dict[str, Any]) -> dict[str, Any]:
     source = _s(values, "source", cfg.get("source") or "demo")
-    symbol = _s(values, "symbol", cfg.get("symbol") or "AAPL")
     url = _s(values, "url", cfg.get("url") or "") or None
     field = _s(values, "field", cfg.get("field") or "") or None
     header_name, header_value = _resolve_header(values, cfg)
-    quote = fetch_quote(
-        symbol,
-        source=source,
-        url=url,
-        field=field,
-        header_name=header_name,
-        header_value=header_value,
-    )
+    preset = _s(values, "preset", cfg.get("preset") or "") or None
+    return {
+        "source": source,
+        "url": url,
+        "field": field,
+        "header_name": header_name,
+        "header_value": header_value,
+        "preset": preset,
+    }
+
+
+def quote_payload(values: dict[str, Any]) -> dict[str, Any]:
+    cfg = load_feed_config()
+    symbol = _s(values, "symbol", cfg.get("symbol") or "AAPL")
+    quote = fetch_quote(symbol, **_feed_kwargs(values, cfg))
+    record_print(quote)
     return {"ok": True, "quote": quote.as_dict()}
+
+
+def probe_payload(values: dict[str, Any]) -> dict[str, Any]:
+    cfg = load_feed_config()
+    symbol = _s(values, "symbol", cfg.get("symbol") or "AAPL")
+    return probe_feed(symbol, **_feed_kwargs(values, cfg))
+
+
+def watch_payload(values: dict[str, Any]) -> dict[str, Any]:
+    cfg = load_feed_config()
+    raw = _s(values, "symbols", values.get("watchlist") or cfg.get("watchlist") or cfg.get("symbol") or "AAPL")
+    symbols = split_symbols(str(raw))
+    quotes, errors = fetch_quotes(symbols, **_feed_kwargs(values, cfg))
+    for quote in quotes:
+        record_print(quote)
+    return {
+        "ok": True,
+        "quotes": [quote.as_dict() for quote in quotes],
+        "errors": errors,
+        "symbols": symbols,
+    }
+
+
+def ingest_payload(values: dict[str, Any]) -> dict[str, Any]:
+    quote = ingest_quote(values, source=_s(values, "source", "push"))
+    record_print(quote)
+    return {"ok": True, "quote": quote.as_dict()}
+
+
+def presets_payload() -> dict[str, Any]:
+    return {"ok": True, "presets": PRESETS}
 
 
 def mark_market_payload(values: dict[str, Any]) -> dict[str, Any]:
@@ -394,11 +456,16 @@ def mark_market_payload(values: dict[str, Any]) -> dict[str, Any]:
 
 
 def health_payload() -> dict[str, Any]:
+    feed = public_feed_config()
+    with _tape_lock:
+        last = _tape[0] if _tape else None
     return {
         "ok": True,
         "version": __version__,
         "uptime_s": round(time.monotonic() - _started, 3),
         "name": "Argentum Studio",
+        "feed": {"source": feed.get("source"), "symbol": feed.get("symbol"), "preset": feed.get("preset")},
+        "last": last,
     }
 
 
@@ -429,6 +496,7 @@ class StudioHandler(BaseHTTPRequestHandler):
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header("Cache-Control", "no-store")
+        self.send_header("Access-Control-Allow-Origin", "*")
         if extra:
             for k, v in extra.items():
                 self.send_header(k, v)
@@ -496,6 +564,14 @@ class StudioHandler(BaseHTTPRequestHandler):
                     self._json({"ok": True, "feed": public_feed_config()})
                 elif path == "/api/mark":
                     self._json(mark_market_payload(qs))
+                elif path == "/api/watch":
+                    self._json(watch_payload(qs))
+                elif path == "/api/tape":
+                    self._json(tape_payload(int(_f(qs, "limit", 16))))
+                elif path == "/api/presets":
+                    self._json(presets_payload())
+                elif path == "/api/probe":
+                    self._json(probe_payload(qs))
                 else:
                     self._json({"error": "not found"}, 404)
             except (ArgentumError, MarketError, ValueError, ZeroDivisionError, OverflowError) as exc:
@@ -520,10 +596,24 @@ class StudioHandler(BaseHTTPRequestHandler):
                 self._json({"ok": True, "feed": save_feed_config(body)})
             elif parsed.path == "/api/mark":
                 self._json(mark_market_payload(body))
+            elif parsed.path == "/api/watch":
+                self._json(watch_payload(body))
+            elif parsed.path == "/api/probe":
+                self._json(probe_payload(body))
+            elif parsed.path == "/api/ingest":
+                self._json(ingest_payload(body))
             else:
                 self._json({"error": "not found"}, 404)
         except (ArgentumError, MarketError, ValueError) as exc:
             self._json({"error": str(exc)}, 400)
+
+    def do_OPTIONS(self) -> None:  # noqa: N802
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        self.send_header("Access-Control-Max-Age", "600")
+        self.end_headers()
 
     def _static(self, path: str) -> None:
         rel = "index.html" if path in {"", "/"} else path.lstrip("/")

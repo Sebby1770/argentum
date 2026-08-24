@@ -1,14 +1,19 @@
-"""A tiny JSON quote venue so you can point Argentum at a market you control.
+"""A tiny JSON venue so you can point Argentum at a market you control.
 
 Run::
 
-    PYTHONPATH=src python3 examples/own_market.py --port 8791
+    PYTHONPATH=src python3 examples/own_market.py --port 8791 --no-auth
 
-Then in Studio → Market, source = Your venue, URL::
+Then in Studio → Market:
 
-    http://127.0.0.1:8791/quote/{symbol}
+    URL    http://127.0.0.1:8791/quote/{symbol}
+    Batch  http://127.0.0.1:8791/quotes?symbols=AAPL,MSFT
 
-Optional Authorization header is ``Bearer desk``.
+Push a print into Studio (from your matching engine)::
+
+    curl -X POST http://127.0.0.1:8787/api/ingest \\
+         -H 'Content-Type: application/json' \\
+         -d '{"symbol":"AAPL","last":227.1,"bid":227.05,"ask":227.15}'
 """
 
 from __future__ import annotations
@@ -25,12 +30,21 @@ def quote_for(symbol: str) -> dict[str, object]:
     digest = hashlib.sha256(sym.encode("utf-8")).hexdigest()
     n = int(digest[:8], 16)
     spot = 15.0 + (n % 48_500) / 100.0
+    last = round(spot, 4)
     vol = 0.12 + (int(digest[8:12], 16) % 400) / 1000.0
+    bid = round(last * 0.9992, 4)
+    ask = round(last * 1.0008, 4)
+    prev = round(last * 0.997, 4)
     return {
         "symbol": sym,
         "name": f"Own {sym}",
-        "spot": round(spot, 4),
-        "last": round(spot, 4),
+        "spot": last,
+        "last": last,
+        "bid": bid,
+        "ask": ask,
+        "prev_close": prev,
+        "change": round(last - prev, 4),
+        "volume": 10_000 + n % 90_000,
         "vol": round(vol, 4),
         "rate": 0.05,
         "div": 0.0,
@@ -41,7 +55,7 @@ def quote_for(symbol: str) -> dict[str, object]:
 
 
 class Venue(BaseHTTPRequestHandler):
-    server_version = "ArgentumOwnMarket/1.3"
+    server_version = "ArgentumOwnMarket/1.4"
 
     def log_message(self, fmt: str, *args: object) -> None:
         print("[own-market] " + (fmt % args))
@@ -54,11 +68,16 @@ class Venue(BaseHTTPRequestHandler):
             return
         parsed = urlparse(self.path)
         parts = [p for p in parsed.path.split("/") if p]
+        qs = parse_qs(parsed.query)
+        if parts and parts[0] == "quotes":
+            raw = (qs.get("symbols") or qs.get("symbol") or [""])[0]
+            symbols = [s.strip() for s in raw.split(",") if s.strip()] or ["AAPL"]
+            self._send(200, {"quotes": [quote_for(s) for s in symbols[:16]]})
+            return
         symbol = ""
         if len(parts) >= 2 and parts[0] == "quote":
             symbol = parts[1]
         if not symbol:
-            qs = parse_qs(parsed.query)
             symbol = (qs.get("symbol") or [""])[0]
         if not symbol:
             self._send(400, {"error": "symbol required"})
@@ -79,6 +98,7 @@ def serve(host: str = "127.0.0.1", port: int = 8791, token: str = "Bearer desk")
     httpd = ThreadingHTTPServer((host, port), Venue)
     httpd.token = token  # type: ignore[attr-defined]
     print(f"Own market  http://{host}:{port}/quote/{{symbol}}")
+    print(f"Batch       http://{host}:{port}/quotes?symbols=AAPL,MSFT")
     if token:
         print(f"Authorization: {token}")
     httpd.serve_forever()

@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.4.0 — 2026-08-24
+
+### Added
+- Vendor quote parsers: Polygon, Finnhub, IEX, Alpha Vantage, Yahoo chart, bid/ask mid, CSV
+- Feed runtime: retries with backoff, TTL cache, stale-on-failure, per-host circuit breaker
+- Watchlist batch (`fetch_quotes` / `GET|POST /api/watch`), probe (`/api/probe`), session tape
+- Ingest path so a matching engine can push ticks (`POST /api/ingest`, CORS)
+- Venue presets (own_market, Polygon, Finnhub, IEX, Alpha Vantage)
+- `argentum quote` CLI; `Book.remap_spots`; `Market.apply_quotes`
+- Front: bid/ask, watch board, probe, session tape, richer desk brief
+
+### Changed
+- Version **1.4.0**
+- Metadata/link-local feed hosts refused; still allows localhost and private venues
+
 ## 1.3.0 — 2026-08-23
 
 ### Added

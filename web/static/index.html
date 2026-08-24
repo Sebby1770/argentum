@@ -29,7 +29,7 @@
     <main id="main">
       <div class="wrap hero">
         <div>
-          <p class="eyebrow">Python · NumPy · Studio v1.3</p>
+          <p class="eyebrow">Python · NumPy · Studio v1.4</p>
           <h1>A desk you can point at your market.</h1>
           <p class="lede">
             Argentum is a local pricing studio. You bring a last print — from a demo book,
@@ -200,7 +200,7 @@
           <article>
             <p class="eyebrow">Your venue</p>
             <h3>HTTP JSON</h3>
-            <p>GET a URL with <code>{symbol}</code>. Read a number. Optional auth header. Localhost is welcome.</p>
+            <p>GET a URL with <code>{symbol}</code>. Polygon, Finnhub, IEX, Alpha Vantage, or the JSON you already emit. Localhost is welcome.</p>
           </article>
         </div>
         <div class="connect">
@@ -215,58 +215,91 @@
             </label>
             <p class="note" id="feed-hint">Offline SHA-256 book. Same ticker, same last, no network.</p>
             <label>Symbol <input name="symbol" id="feed-symbol" value="AAPL" autocomplete="off" /></label>
+            <label>Watchlist
+              <input name="watchlist" id="feed-watchlist" value="AAPL,MSFT,NVDA,GOOG" autocomplete="off" />
+            </label>
             <div id="http-fields" class="hidden-fields" hidden>
+              <label>Preset
+                <select name="preset" id="feed-preset">
+                  <option value="">Custom URL</option>
+                </select>
+              </label>
               <label>Quote URL
                 <input name="url" id="feed-url" placeholder="https://your-venue/api/quote/{symbol}" />
               </label>
               <label>Spot field
-                <input name="field" id="feed-field" placeholder="spot  or  data.last" />
+                <input name="field" id="feed-field" placeholder="spot  or  data.last  or  results.p" />
               </label>
               <label>Header name
                 <input name="header_name" id="feed-header-name" placeholder="Authorization" />
               </label>
               <label>Header value
-                <input name="header_value" id="feed-header-value" placeholder="Bearer …" autocomplete="off" />
+                <input name="header_value" id="feed-header-value" placeholder="Bearer …  or API key for {key}" autocomplete="off" />
               </label>
               <p class="note">
-                Put <code>{symbol}</code> in the path or query. Argentum GETs it
-                and reads <code>spot</code>, <code>last</code>, <code>price</code>,
-                or <code>close</code> — or the dotted field you name. Optional
-                <code>vol</code> / <code>rate</code> / <code>div</code> ride along.
-                A saved header shows as <code>••••</code> and is not sent as the
-                token. Only http and https; no <code>file://</code>.
+                Put <code>{symbol}</code> in the path or query, <code>{key}</code>
+                if the vendor wants the token in the URL. Argentum reads
+                <code>spot</code> / <code>last</code> / <code>price</code> /
+                <code>close</code>, Polygon <code>results.p</code>, Finnhub
+                <code>c</code>, IEX <code>latestPrice</code>, or a bid/ask mid.
+                Retries, a short cache, and a circuit breaker sit in front of
+                the socket. Saved secrets show as <code>••••</code>. No
+                <code>file://</code>, no cloud-metadata hosts.
               </p>
             </div>
-            <button class="btn" type="submit">Save and pull</button>
+            <div class="cta-row">
+              <button class="btn" type="submit">Save and pull</button>
+              <button class="btn ghost" type="button" id="feed-probe">Probe</button>
+              <button class="btn ghost" type="button" id="feed-watch">Refresh board</button>
+            </div>
             <p class="status" id="feed-status"></p>
           </form>
           <aside class="quote-card" aria-live="polite">
             <p class="eyebrow">Last print</p>
             <h3 id="q-symbol">—</h3>
             <p class="print" id="q-spot">—</p>
+            <dl class="ba" id="q-ba" hidden>
+              <div><dt>Bid</dt><dd id="q-bid">—</dd></div>
+              <div><dt>Ask</dt><dd id="q-ask">—</dd></div>
+              <div><dt>Chg</dt><dd id="q-chg">—</dd></div>
+            </dl>
             <p class="note" id="q-meta">Choose a source and pull a symbol.</p>
             <div class="cta-row">
               <a class="btn" id="q-lab" href="/lab">Mark ATM in the lab</a>
             </div>
           </aside>
         </div>
+        <div class="board-wrap">
+          <p class="eyebrow">Watch</p>
+          <table class="data board" id="watch-board">
+            <thead>
+              <tr><th>Symbol</th><th>Last</th><th>Bid</th><th>Ask</th><th>Chg %</th></tr>
+            </thead>
+            <tbody id="watch-body">
+              <tr><td colspan="5">Save a feed, then refresh the board.</td></tr>
+            </tbody>
+          </table>
+          <p class="eyebrow" style="margin-top: 22px">Session tape</p>
+          <ol class="prints" id="session-tape"></ol>
+        </div>
         <div class="contract">
           <div>
             <p class="eyebrow">Shape of a quote</p>
             <p class="note">
-              Your matching engine, a mock you already have, or
-              <code>python examples/own_market.py</code> — then set the URL to
-              <code>http://127.0.0.1:8791/quote/{symbol}</code>. Nested fields
-              work: <code>data.last</code>.
+              Pull with a URL, or push from the matching engine:
+              <code>POST /api/ingest</code>. A local mock is
+              <code>python examples/own_market.py --no-auth</code>
+              then <code>http://127.0.0.1:8791/quote/{symbol}</code>.
+              Nested fields and vendor shapes both work.
             </p>
           </div>
           <pre><code>{
   "symbol": "AAPL",
-  "spot": 227.14,
+  "last": 227.14,
+  "bid": 227.10,
+  "ask": 227.18,
   "vol": 0.22,
-  "rate": 0.05,
-  "div": 0.004,
-  "asof": "2026-08-21T20:00:00Z"
+  "asof": "2026-08-24T14:32:01Z"
 }</code></pre>
         </div>
         <p class="note" style="margin-top: 22px">
@@ -330,18 +363,21 @@
           <dd>Implied vol of a model price returns the input vol.</dd>
           <dt>05</dt>
           <dd>Domain errors raise. They do not return NaN.</dd>
+          <dt>06</dt>
+          <dd>A failing venue trips a circuit. A cached print may be served stale, never invented.</dd>
         </dl>
       </section>
 
       <section class="section wrap">
         <h2>Thirty seconds to a number</h2>
         <pre><code>from argentum import OptionType, price, greeks
-from argentum.feeds import fetch_quote
+from argentum.feeds import fetch_quote, fetch_quotes, probe_feed
 
 q = fetch_quote("AAPL", source="demo")
 # q = fetch_quote("AAPL", source="http", url="http://127.0.0.1:8791/quote/{symbol}")
-npv = price(q.spot, q.spot, 0.05, 0.0, 0.20, 1.0, OptionType.CALL)
-g = greeks(q.spot, q.spot, 0.05, 0.0, 0.20, 1.0, OptionType.CALL)</code></pre>
+# probe_feed("AAPL", source="http", url="https://your-venue/q/{symbol}")
+book, errs = fetch_quotes(["AAPL", "MSFT"], source="demo")
+npv = price(q.spot, q.spot, 0.05, 0.0, 0.20, 1.0, OptionType.CALL)</code></pre>
       </section>
     </main>
     <footer>Argentum Studio · local desk · not a broker and not a live exchange</footer>

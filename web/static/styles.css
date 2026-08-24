@@ -355,6 +355,68 @@ h1 {
   font-variant-numeric: tabular-nums;
 }
 
+.ba {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.ba[hidden] {
+  display: none !important;
+}
+
+.ba dt {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--paper-dim);
+  margin: 0 0 4px;
+}
+
+.ba dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.board-wrap {
+  margin-top: 32px;
+}
+
+.board th,
+.board td {
+  text-align: right;
+}
+
+.board th:first-child,
+.board td:first-child {
+  text-align: left;
+}
+
+.prints {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-width: 720px;
+}
+
+.prints li {
+  display: flex;
+  gap: 14px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.prints span {
+  color: var(--paper-dim);
+  margin-left: auto;
+}
+
 .hidden-fields[hidden] {
   display: none !important;
 }

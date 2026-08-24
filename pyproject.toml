@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "argentum"
-version = "1.3.0"
+version = "1.4.0"
 description = "Production-grade derivatives pricing library: curves, bonds, swaps, vol, exotics, risk."
 readme = "README.md"
 license = { text = "MIT" }

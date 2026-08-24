@@ -83,6 +83,16 @@ def build_parser() -> argparse.ArgumentParser:
     heston.add_argument("--sigma", type=float, default=0.4)
     heston.add_argument("--rho", type=float, default=-0.5)
     heston.add_argument("--v0", type=float, default=0.04)
+
+    quote = sub.add_parser("quote", help="Pull a last print from demo, Stooq, or a venue URL")
+    quote.add_argument("symbol")
+    quote.add_argument("--source", default="demo", help="demo | stooq | http")
+    quote.add_argument("--url", default="", help="JSON venue with {symbol}")
+    quote.add_argument("--field", default="", help="dotted path, e.g. data.last")
+    quote.add_argument("--header-name", default="", dest="header_name")
+    quote.add_argument("--header-value", default="", dest="header_value")
+    quote.add_argument("--preset", default="", help="own | polygon | finnhub | alphavantage | iex")
+    quote.add_argument("--json", action="store_true")
     return p
 
 
@@ -154,6 +164,26 @@ def main(argv: list[str] | None = None) -> int:
 
         params = HestonParams(args.kappa, args.theta, args.sigma, args.rho, args.v0)
         print(f"{heston_price(args.spot, args.strike, args.rate, 0.0, args.texp, params, OT.CALL):.8f}")
+        return 0
+    if args.cmd == "quote":
+        from argentum.feeds import fetch_quote
+
+        quoted = fetch_quote(
+            args.symbol,
+            source=args.source,
+            url=args.url or None,
+            field=args.field or None,
+            header_name=args.header_name or None,
+            header_value=args.header_value or None,
+            preset=args.preset or None,
+        )
+        if args.json:
+            json.dump(quoted.as_dict(), sys.stdout, indent=2)
+            sys.stdout.write("\n")
+        else:
+            print(f"{quoted.symbol:8} {quoted.spot:12.4f}  {quoted.source}")
+            if quoted.bid is not None and quoted.ask is not None:
+                print(f"bid/ask  {quoted.bid:.4f} / {quoted.ask:.4f}")
         return 0
     return 2
 

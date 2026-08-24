@@ -51,9 +51,10 @@
           <h3>Your market</h3>
           <p>
             Studio pulls a last print from a demo book, Stooq, or any HTTP JSON
-            venue (<code>{symbol}</code> in the URL). That number is spot — not
-            an order. See Front → Connect a market, or
-            <code>python examples/own_market.py</code>.
+            venue (<code>{symbol}</code> in the URL). Presets for Polygon,
+            Finnhub, IEX, Alpha Vantage. Probe, watchlist, session tape, and
+            <code>POST /api/ingest</code> so a matching engine can push ticks.
+            Retries, cache, circuit breaker. That number is spot — not an order.
           </p>
         </article>
       </div>
@@ -65,7 +66,7 @@
 python3 -m pytest -q
 python3 -m argentum vanilla --spot 100 --strike 100 --rate 0.05 --vol 0.2 --texp 1</code></pre>
     </main>
-    <footer>Argentum Docs · v1.3</footer>
+    <footer>Argentum Docs · v1.4</footer>
     <script src="/chrome.js"></script>
   </body>
 </html>

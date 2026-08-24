@@ -31,3 +31,11 @@ class Market:
         from argentum.errors import MarketError
 
         raise MarketError(f"no spot for {name!r}")
+
+    def apply_quotes(self, quotes: list[object]) -> None:
+        """Write last prints onto the snapshot. A feed supplies spots, not models."""
+        for quote in quotes:
+            symbol = getattr(quote, "symbol", None)
+            spot = getattr(quote, "spot", None)
+            if symbol and spot is not None:
+                self.spots[str(symbol)] = float(spot)
