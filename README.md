@@ -1,11 +1,11 @@
 # Argentum
 
-A production-grade derivatives pricing library in Python, with a local Studio desk.
+A typed derivatives pricing and portfolio-risk library in Python, with a local Studio desk.
 
-Argentum is what you reach for when QuantLib is too heavy to install and a
-notebook full of Black–Scholes one-liners is not enough. It is typed,
-tested against published identities, dual-curve native, and has no
-dependency except NumPy.
+Argentum is for research, teaching, and desk prototyping when QuantLib is too
+heavy to install and a notebook full of Black–Scholes one-liners is not
+enough. It is typed, tested against published identities, dual-curve native,
+and has no dependency except NumPy.
 
 ```python
 from argentum import OptionType, price, greeks, implied_vol
@@ -45,7 +45,7 @@ argentum studio --port 8787
 
 Open [http://127.0.0.1:8787](http://127.0.0.1:8787). The front page is the desk
 brief: what the site is, what it does, how it helps, and a panel to **connect
-your own stock market**. Sources:
+your market-data endpoint**. Sources:
 
 - **Demo book** — offline, deterministic last / bid / ask (no network)
 - **Stooq** — public daily close
@@ -53,7 +53,7 @@ your own stock market**. Sources:
   Polygon `results.p`, Finnhub `c`, IEX `latestPrice`, Yahoo chart, or a
   bid/ask mid. `{symbol}` in the URL, `{key}` for a token. Optional auth
   header. Localhost is welcome; cloud metadata hosts are not.
-- **Push** — `POST /api/ingest` from a matching engine.
+- **Push** — authenticated `POST /api/ingest` from a matching engine.
 
 The adapter retries, caches a few seconds, and will serve a stale print if
 the venue blinks — it will not invent a number. Probe, watchlist, session tape
@@ -67,6 +67,42 @@ argentum quote AAPL --source http --url http://127.0.0.1:8791/quote/{symbol}
 ```
 
 The lab then marks options on that last print. Press `K` for the jump palette.
+
+### A reproducible portfolio report
+
+Keep a small vanilla book in UTF-8 CSV or JSON and export normalized inputs,
+the Argentum version, input digest, aggregate Greeks, tag groups, and a
+deterministic scenario ladder:
+
+```bash
+argentum portfolio examples/sample_portfolio.csv --format text
+argentum portfolio examples/sample_portfolio.csv --format json --output risk-report.json
+```
+
+Studio's Portfolio page can load the same file locally and export the JSON
+report. Required fields are `spot`, `strike`, `vol`, and `texp`; optional fields
+are `tag`, `quantity` (or `qty`), `rate`, `div`, and `type`.
+
+### Local security defaults
+
+Studio binds to `127.0.0.1`, validates the Host header, denies cross-site
+browser traffic, and requires a per-process session token for feed operations.
+Feed configuration lives in the current user's operating-system config
+directory, not the checkout or installed package, and is written with mode
+`0600` where the platform supports it.
+
+Push ingest is disabled unless you configure a token:
+
+```bash
+ARGENTUM_INGEST_TOKEN='replace-with-a-long-random-token' argentum studio
+curl -H 'Content-Type: application/json' \
+  -H 'X-Argentum-Ingest-Token: replace-with-a-long-random-token' \
+  -d '{"symbol":"AAPL","last":227.14}' http://127.0.0.1:8787/api/ingest
+```
+
+For a disposable loopback-only demonstration, the explicit
+`--allow-unauthenticated-ingest` flag restores tokenless push. Cross-origin
+browser access and additional Host names remain opt-in.
 
 ## What you can price
 
@@ -134,6 +170,7 @@ argentum bond --coupon 0.06 --ytm 0.05 --as-of 2016-08-15 --maturity 2026-08-15
 argentum swap --as-of 2026-08-24 --tenor 5Y --rate 0.04 --curve 0.04
 argentum heston --spot 100 --strike 100 --texp 1
 argentum quote AAPL
+argentum portfolio examples/sample_portfolio.csv --format json
 argentum studio --port 8787
 ```
 
@@ -150,7 +187,9 @@ src/argentum/
   risk/             DV01, key-rate buckets, VaR
   calibration/      Levenberg–Marquardt for SABR / SVI / Heston
   feeds.py          demo, Stooq, vendor JSON, cache, circuit, ingest
+  portfolio.py      validated CSV/JSON books and reproducible risk reports
   studio.py         local desk (Front, lab, smile, book, watch, tape)
+  static/           packaged Studio HTML, CSS, JavaScript, and media
 ```
 
 ## Accuracy notes
@@ -164,9 +203,17 @@ src/argentum/
 - Finite difference uses Rannacher startup (two fully implicit steps) to
   kill the strike discontinuity before Crank–Nicolson.
 
-This is not a substitute for a validated model-risk framework. Numbers
-are for research, teaching, and desk prototyping. Read `docs/THEORY.md`
+Outputs are estimates for research, teaching, and desk prototyping. Argentum
+is not a broker, data provider, validated risk system, investment advice, or a
+substitute for an independent model-risk framework. Read `docs/THEORY.md`
 before putting a formula into production.
+
+## Optional setup and support
+
+The MIT core remains free. Proposed paid setup and implementation-support
+offers are documented on the [public project site](https://sebby1770.github.io/argentum/pricing.html).
+Every engagement is subject to availability, a written scope, and an agreed
+quote; the repository itself contains no payment or secret-gated features.
 
 ## License
 

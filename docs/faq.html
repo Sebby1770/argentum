@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Argentum FAQ — licensing, models, data, and support</title>
+    <meta name="description" content="Answers about Argentum's MIT licence, model scope, local Studio, market data, validation limits, and paid support response target." />
+    <link rel="canonical" href="https://sebby1770.github.io/argentum/faq.html" />
+    <meta property="og:type" content="website" /><meta property="og:site_name" content="Argentum" /><meta property="og:title" content="Argentum FAQ" /><meta property="og:description" content="Licensing, models, local data, validation limits, and support." /><meta property="og:url" content="https://sebby1770.github.io/argentum/faq.html" /><meta property="og:image" content="https://sebby1770.github.io/argentum/assets/og.png" /><meta property="og:image:alt" content="Argentum — Pricing. Risk. Your market." />
+    <meta name="twitter:card" content="summary_large_image" /><meta name="twitter:title" content="Argentum FAQ" /><meta name="twitter:description" content="Licensing, models, local data, validation limits, and support." /><meta name="twitter:image" content="https://sebby1770.github.io/argentum/assets/og.png" />
+    <link rel="stylesheet" href="/argentum/assets/site.css" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {"@type":"Question","name":"What is Argentum?","acceptedAnswer":{"@type":"Answer","text":"Argentum is an MIT-licensed Python toolkit for derivatives pricing, portfolio scenarios, and local market-data prototyping."}},
+          {"@type":"Question","name":"Is Argentum validated for production trading?","acceptedAnswer":{"@type":"Answer","text":"No. It is intended for research, teaching, and desk prototyping. A firm must perform its own independent model validation, data controls, security review, and change approval."}},
+          {"@type":"Question","name":"Is the core really free?","acceptedAnswer":{"@type":"Answer","text":"Yes. The repository is licensed under MIT. Paid offers cover scoped setup and implementation support, not access to hidden pricing engines."}},
+          {"@type":"Question","name":"Does Studio upload my portfolio or API key?","acceptedAnswer":{"@type":"Answer","text":"Studio runs locally. Feed configuration is stored in the current user's operating-system config directory and secrets are redacted in the UI. A configured quote credential is sent only to the venue URL the user chooses."}},
+          {"@type":"Question","name":"Can Argentum connect to my market data?","acceptedAnswer":{"@type":"Answer","text":"It can use its deterministic demo book, a public Stooq close, a supported vendor-shaped JSON response, a custom HTTP JSON or CSV endpoint, or a local push endpoint."}},
+          {"@type":"Question","name":"Which products are covered?","acceptedAnswer":{"@type":"Answer","text":"The code includes equity and FX options, selected exotics, bonds, swaps, caps, swaptions, CDS, yield and hazard curves, SABR, SVI, Heston, numerical engines, and risk helpers. Exact scope and limitations live in the repository."}},
+          {"@type":"Question","name":"What does the two-business-day response promise mean?","acceptedAnswer":{"@type":"Answer","text":"It is a target for the initial reply after a paid support arrangement is accepted. It is not an SLA, 24/7 service, uptime support, or incident response."}},
+          {"@type":"Question","name":"How do I install Argentum today?","acceptedAnswer":{"@type":"Answer","text":"Clone the GitHub repository and install it in a Python 3.10 or newer environment. Do not rely on a download or package-index release unless one is visibly published."}}
+        ]
+      }
+    </script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="site-header"><div class="shell header-inner"><a class="brand" href="/argentum/">Argentum</a><nav class="nav" aria-label="Primary"><a href="/argentum/case-studies.html">Proof</a><a aria-current="page" href="/argentum/faq.html">FAQ</a><a href="/argentum/about.html">About</a><a href="https://github.com/Sebby1770/argentum">GitHub</a><a class="nav-cta" href="/argentum/pricing.html">Setup &amp; support</a></nav></div></header>
+    <main id="main">
+      <nav class="shell breadcrumbs" aria-label="Breadcrumb"><ol><li><a href="/argentum/">Home</a></li><li aria-current="page">FAQ</li></ol></nav>
+      <header class="page-hero"><div class="shell"><p class="eyebrow">Straight answers</p><h1>Frequently asked questions</h1><p class="lede">Scope, trust, data handling, licensing, and the limits of the commercial offer.</p></div></header>
+      <section class="section"><div class="shell faq-list">
+        <details open><summary>What is Argentum?</summary><p>Argentum is an MIT-licensed Python toolkit for derivatives pricing, portfolio scenarios, and local market-data prototyping. It combines a typed library, CLI, examples, tests, and a local Studio.</p></details>
+        <details><summary>Is Argentum validated for production trading?</summary><p>No. It is intended for research, teaching, and desk prototyping. A firm must perform its own independent model validation, benchmark review, data controls, security review, and change approval before relying on any output.</p></details>
+        <details><summary>Is the core really free?</summary><p>Yes. The repository is licensed under MIT. Paid offers cover scoped setup and implementation support, not access to hidden pricing engines.</p></details>
+        <details><summary>Does Studio upload my portfolio or API key?</summary><p>Studio runs locally. Feed configuration is stored in the current user's operating-system config directory and secrets are redacted in the UI. A configured quote credential is sent only to the venue URL the user chooses. The separate public website does not connect to local Studio.</p></details>
+        <details><summary>Can Argentum connect to my market data?</summary><p>It can use its deterministic demo book, a public Stooq close, a supported vendor-shaped JSON response, a custom HTTP JSON or CSV endpoint, or a local push endpoint. The user remains responsible for entitlements, field units, timestamps, and stale-data policy.</p></details>
+        <details><summary>Which products are covered?</summary><p>The code includes equity and FX options, selected exotics, bonds, swaps, caps, swaptions, CDS, yield and hazard curves, SABR, SVI, Heston, numerical engines, and risk helpers. Review the repository and theory notes for exact conventions and gaps.</p></details>
+        <details><summary>What does the two-business-day response promise mean?</summary><p>It is a target for the initial reply after a paid support arrangement is accepted. It is not an SLA, 24/7 service, uptime support, incident response, financial advice, or a promise that a particular engagement will be accepted.</p></details>
+        <details><summary>How do I install Argentum today?</summary><p>Clone the GitHub repository and install it in a Python 3.10 or newer environment. Do not rely on a package-index or downloadable release unless one is visibly published on the repository.</p><pre><code>git clone https://github.com/Sebby1770/argentum.git
+cd argentum
+python -m pip install -e ".[dev]"</code></pre></details>
+      </div></section>
+      <section class="section"><div class="shell callout"><p class="eyebrow">Still evaluating?</p><h2>Start with the evidence, then decide whether help is useful.</h2><div class="actions"><a class="button" href="/argentum/case-studies.html">Review reproducible proof</a><a class="button secondary" href="/argentum/pricing.html">See support scope</a></div></div></section>
+    </main>
+    <a class="button mobile-cta" href="/argentum/pricing.html">Setup &amp; support</a>
+    <footer class="site-footer"><div class="shell footer-inner"><div><strong>Argentum</strong><p class="fine">© <span data-year></span> Sebastian Forbes. Core code under MIT.</p></div><nav class="footer-links" aria-label="Footer"><a href="/argentum/privacy.html">Privacy</a><a href="/argentum/about.html">About</a><a href="https://github.com/Sebby1770/argentum/issues">Issues</a><button type="button" data-analytics-settings hidden>Analytics choices</button></nav></div></footer>
+    <script src="/argentum/assets/site.js"></script><script src="/argentum/assets/analytics.js"></script>
+  </body>
+</html>

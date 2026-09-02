@@ -20,15 +20,34 @@ def levenberg_marquardt(
     bounds: list[tuple[float, float]] | None = None,
     maxiter: int = 80,
     ftol: float = 1e-12,
+    xtol: float = 1e-10,
+    gtol: float = 1e-10,
     lambda0: float = 1e-3,
 ) -> np.ndarray:
-    """Finite-difference LM. ``residual`` returns a vector r(x)."""
+    """Finite-difference LM. Raise rather than return an unconverged iterate."""
+    if maxiter <= 0:
+        raise ValueError("maxiter must be positive")
     x = np.array(x0, dtype=float)
+    if x.ndim != 1 or x.size == 0 or not np.all(np.isfinite(x)):
+        raise ValueError("x0 must be a non-empty finite vector")
+    if bounds is not None and len(bounds) != x.size:
+        raise ValueError("bounds must contain one (lo, hi) pair per parameter")
     lam = lambda0
-    r = residual(x)
+
+    def evaluate(point: np.ndarray, iteration: int) -> np.ndarray:
+        values = np.asarray(residual(point), dtype=float)
+        if values.ndim != 1 or values.size == 0:
+            raise ConvergenceError("residual must return a non-empty vector", iterations=iteration)
+        if not np.all(np.isfinite(values)):
+            raise ConvergenceError("residual returned NaN or infinity", iterations=iteration)
+        return values
+
+    r = evaluate(x, 0)
     cost = float(r @ r)
+    if cost <= ftol:
+        return x
     n = x.size
-    for _ in range(maxiter):
+    for iteration in range(1, maxiter + 1):
         # Jacobian
         j = np.zeros((r.size, n))
         for i in range(n):
@@ -37,32 +56,51 @@ def levenberg_marquardt(
             xp[i] += h
             if bounds is not None:
                 xp[i] = min(max(xp[i], bounds[i][0]), bounds[i][1])
-            rp = residual(xp)
+            rp = evaluate(xp, iteration)
             j[:, i] = (rp - r) / (xp[i] - x[i] if xp[i] != x[i] else h)
         a = j.T @ j
         g = j.T @ r
+        if float(np.linalg.norm(g, ord=np.inf)) <= gtol:
+            return x
         stepped = False
+        previous_cost = cost
+        accepted_delta = np.zeros_like(x)
         for _try in range(8):
-            delta = np.linalg.solve(a + lam * np.eye(n), -g)
+            try:
+                delta = np.linalg.solve(a + lam * np.eye(n), -g)
+            except np.linalg.LinAlgError:
+                lam = min(lam * 10.0, 1e12)
+                continue
             x_new = x + delta
             if bounds is not None:
                 for i, (lo, hi) in enumerate(bounds):
                     x_new[i] = min(max(x_new[i], lo), hi)
-            r_new = residual(x_new)
+            r_new = evaluate(x_new, iteration)
             cost_new = float(r_new @ r_new)
             if cost_new < cost:
                 x, r, cost = x_new, r_new, cost_new
+                accepted_delta = delta
                 lam = max(lam / 3.0, 1e-12)
                 stepped = True
                 break
             lam = min(lam * 3.0, 1e8)
         if not stepped:
-            break
-        if cost < ftol:
-            break
-        if float(np.linalg.norm(g)) < 1e-10:
-            break
-    return x
+            raise ConvergenceError(
+                "Levenberg–Marquardt could not find a descent step",
+                iterations=iteration,
+                residual=cost**0.5,
+            )
+        if cost <= ftol:
+            return x
+        if float(np.linalg.norm(accepted_delta)) <= xtol * (xtol + float(np.linalg.norm(x))):
+            return x
+        if previous_cost - cost <= ftol * max(1.0, previous_cost):
+            return x
+    raise ConvergenceError(
+        "Levenberg–Marquardt reached maxiter without convergence",
+        iterations=maxiter,
+        residual=cost**0.5,
+    )
 
 
 def calibrate_sabr(

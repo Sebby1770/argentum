@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Load a CSV or JSON vanilla portfolio, aggregate Greeks, run scenarios, and export a reproducible risk report locally." />
+    <title>Portfolio risk — Argentum Studio</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="top">
+      <a class="wordmark" href="/"><span class="bar"></span>Argentum</a>
+      <nav></nav>
+    </header>
+    <main class="wrap desk">
+      <form class="panel" id="form">
+        <p class="eyebrow">Portfolio risk</p>
+        <h1 class="desk-title">Bring a small vanilla book.</h1>
+        <p class="note">Load UTF-8 CSV or JSON locally, aggregate NPV and Greeks, then run the same spot, vol, and rate ladder. With no file selected, Studio uses its three-position demonstration book.</p>
+        <label>Portfolio file
+          <input id="portfolio-file" type="file" accept=".csv,.json,text/csv,application/json" />
+        </label>
+        <p class="note" id="file-status">Required columns: spot, strike, vol, texp. Optional: tag, quantity, rate, div, type.</p>
+        <div class="cta-row compact">
+          <button class="btn" type="submit">Run scenarios</button>
+          <button class="btn ghost" id="export-report" type="button" disabled>Export JSON</button>
+        </div>
+        <a href="/sample-portfolio.csv" download>Download sample CSV</a>
+        <p class="err" id="err"></p>
+      </form>
+      <div>
+        <div class="metrics" id="metrics"></div>
+        <table class="data" id="table"></table>
+      </div>
+    </main>
+    <footer>Scenario PnL · normalized inputs · reproducible JSON · not a validated risk system</footer>
+    <script src="/chrome.js"></script>
+    <script src="/book.js"></script>
+  </body>
+</html>

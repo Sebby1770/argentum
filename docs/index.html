@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#07090d" />
+    <title>Argentum — transparent derivatives pricing and portfolio risk</title>
+    <meta name="description" content="Argentum is an MIT-licensed Python toolkit for transparent derivatives pricing, scenario analysis, and local market-data prototyping." />
+    <link rel="canonical" href="https://sebby1770.github.io/argentum/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Argentum" />
+    <meta property="og:title" content="Argentum — see the model, reproduce the mark" />
+    <meta property="og:description" content="Open Python pricing and risk tooling, plus optional paid setup and support." />
+    <meta property="og:url" content="https://sebby1770.github.io/argentum/" />
+    <meta property="og:image" content="https://sebby1770.github.io/argentum/assets/og.png" />
+    <meta property="og:image:alt" content="Argentum — Pricing. Risk. Your market." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Argentum — see the model, reproduce the mark" />
+    <meta name="twitter:description" content="Open Python pricing and risk tooling, plus optional paid setup and support." />
+    <meta name="twitter:image" content="https://sebby1770.github.io/argentum/assets/og.png" />
+    <link rel="icon" href="/argentum/assets/og.png" type="image/png" />
+    <link rel="stylesheet" href="/argentum/assets/site.css" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Argentum",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Windows, macOS, Linux",
+        "softwareVersion": "1.5.0",
+        "description": "MIT-licensed Python toolkit for derivatives pricing, portfolio scenarios, and local market-data prototyping.",
+        "codeRepository": "https://github.com/Sebby1770/argentum",
+        "license": "https://opensource.org/license/mit",
+        "author": { "@type": "Person", "name": "Sebastian Forbes", "url": "https://github.com/Sebby1770" },
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "AUD", "description": "MIT-licensed core" }
+      }
+    </script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="shell header-inner">
+        <a class="brand" href="/argentum/">Argentum</a>
+        <nav class="nav" aria-label="Primary">
+          <a href="/argentum/case-studies.html">Proof</a>
+          <a href="/argentum/faq.html">FAQ</a>
+          <a href="/argentum/about.html">About</a>
+          <a href="https://github.com/Sebby1770/argentum">GitHub</a>
+          <a class="nav-cta" href="/argentum/pricing.html">Setup &amp; support</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="shell hero">
+        <div>
+          <p class="eyebrow">Open models · reproducible risk · local Studio</p>
+          <h1>See the model. Reproduce the mark.</h1>
+          <p class="lede">
+            Open-source derivatives analytics and a local research Studio for education, model
+            exploration, and prototyping. Connect to a market-data endpoint, price supported
+            instruments, and run portfolio scenarios. The MIT core stays free; paid setup and
+            support are available when a team wants a guided path.
+          </p>
+          <div class="actions">
+            <a class="button" href="https://github.com/Sebby1770/argentum">Explore the free core</a>
+            <a class="button secondary" href="/argentum/pricing.html">See setup &amp; support</a>
+          </div>
+          <p class="fine">Outputs are estimates. Argentum is not a broker, data provider, validated risk system, investment advice, or a substitute for independent model validation.</p>
+        </div>
+        <figure class="hero-art">
+          <img src="/argentum/assets/og.png" width="1731" height="909" alt="Argentum — Pricing. Risk. Your market." />
+          <figcaption>One NumPy runtime. Explicit assumptions. Reproducible inputs.</figcaption>
+        </figure>
+      </section>
+
+      <div class="shell trust-strip" aria-label="Project facts">
+        <div><strong>MIT</strong><span>open core</span></div>
+        <div><strong>NumPy</strong><span>only runtime dependency</span></div>
+        <div><strong>Python 3.10+</strong><span>typed package</span></div>
+        <div><strong>100+ tests</strong><span>identities and edge cases</span></div>
+      </div>
+
+      <section class="section" id="workflow">
+        <div class="shell">
+          <div class="section-head">
+            <div><p class="eyebrow">From file to risk</p><h2>A reviewable workflow</h2></div>
+            <p>Keep the portfolio in CSV or JSON, run the same scenario ladder on every machine, and inspect the implementation when a number needs explaining.</p>
+          </div>
+          <div class="grid">
+            <article class="card"><p class="number">01</p><h3>Describe the book</h3><p>Positions carry spot, strike, rate, dividend, volatility, expiry, quantity, type, and an optional tag.</p></article>
+            <article class="card"><p class="number">02</p><h3>Run the mark</h3><p>Aggregate NPV and Greeks, group by tag, then stress spot, volatility, and rates through a deterministic scenario ladder.</p></article>
+            <article class="card"><p class="number">03</p><h3>Keep the evidence</h3><p>Export text, JSON, or CSV. Pin the commit and inputs so a reviewer can reproduce the result instead of trusting a screenshot.</p></article>
+          </div>
+          <pre><code>git clone https://github.com/Sebby1770/argentum.git
+cd argentum
+python -m pip install -e ".[dev]"
+argentum portfolio examples/sample_portfolio.csv --format json
+argentum studio --port 8787</code></pre>
+        </div>
+      </section>
+
+      <section class="section" id="coverage">
+        <div class="shell">
+          <div class="section-head">
+            <div><p class="eyebrow">Model coverage</p><h2>More than a one-line option formula</h2></div>
+            <p>Argentum covers a broad research surface while keeping conventions visible: curves and day counts, equity and FX options, rates, credit, volatility models, numerical engines, and risk.</p>
+          </div>
+          <div class="grid">
+            <article class="card"><h3>Equity, FX, exotics</h3><p>European and American vanillas, barriers, lookbacks, Asians, quanto, multi-asset structures, trees, finite difference, and Monte Carlo.</p></article>
+            <article class="card"><h3>Rates and credit</h3><p>Yield-curve bootstrap, separate discount and forecast curves, swaps, caps, swaptions, bonds, hazard curves, and CDS.</p></article>
+            <article class="card"><h3>Volatility and risk</h3><p>SABR, SVI, Heston COS, local volatility, Greeks, DV01, VaR helpers, book aggregation, and parallel scenarios.</p></article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="proof">
+        <div class="shell">
+          <div class="section-head">
+            <div><p class="eyebrow">Evidence before adjectives</p><h2>Reproduce the examples</h2></div>
+            <p>There are no invented customer logos, ratings, or testimonials here. The published proof is code, formulas, tests, and commands you can run yourself.</p>
+          </div>
+          <div class="grid">
+            <article class="card proof"><h3>Black–Scholes identity</h3><p><code>S=K=100, r=5%, σ=20%, T=1</code> returns <code>10.450583572...</code> and implied volatility round-trips to 20%.</p></article>
+            <article class="card proof"><h3>Convention fixtures</h3><p>Tests cover day-count boundaries, holiday logic, curve interpolation, schedule generation, pricing limits, and numerical engines.</p></article>
+            <article class="card proof"><h3>Portfolio scenario report</h3><p>The sample book produces a versioned JSON schema with aggregate risk, tag groups, and a reusable shock ladder.</p></article>
+          </div>
+          <div class="actions"><a class="button secondary" href="/argentum/case-studies.html">See reproducible proof</a></div>
+        </div>
+      </section>
+
+      <section class="section" id="commercial">
+        <div class="shell callout">
+          <p class="eyebrow">Open core, paid guidance</p>
+          <h2>Keep the code. Buy help only when it saves time.</h2>
+          <p>Use every MIT-licensed model without a sales call. If your team needs an integration walkthrough, review checklist, or ongoing implementation support, start with a written scope and confirm availability before committing.</p>
+          <div class="actions">
+            <a class="button" href="/argentum/pricing.html">Review launch pricing</a>
+            <a class="button secondary" href="/argentum/thank-you.html">Get the free readiness brief</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <a class="button mobile-cta" href="/argentum/pricing.html">Setup &amp; support</a>
+    <footer class="site-footer">
+      <div class="shell footer-inner">
+        <div><strong>Argentum</strong><p class="fine">© <span data-year></span> Sebastian Forbes. Core code under MIT.</p></div>
+        <nav class="footer-links" aria-label="Footer">
+          <a href="/argentum/privacy.html">Privacy</a><a href="/argentum/faq.html">FAQ</a><a href="/argentum/about.html">About</a><a href="https://github.com/Sebby1770/argentum/issues">Issues</a>
+          <button type="button" data-analytics-settings hidden>Analytics choices</button>
+        </nav>
+      </div>
+    </footer>
+    <script src="/argentum/assets/site.js"></script>
+    <script src="/argentum/assets/analytics.js"></script>
+  </body>
+</html>

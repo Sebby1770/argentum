@@ -1,0 +1,40 @@
+name: Commercial setup or support enquiry
+description: Public, non-binding request to discuss a scoped Argentum engagement
+title: "Commercial enquiry: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This issue is public. Do not include credentials, proprietary portfolios,
+        personal financial information, customer names, or confidential model details.
+        Opening an issue does not create a contract or guarantee availability.
+  - type: dropdown
+    id: offer
+    attributes:
+      label: Which path are you evaluating?
+      options:
+        - One-off desk setup
+        - Monthly implementation support
+        - A separately scoped request
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe the non-confidential outcome and current blocker.
+      placeholder: We want to run the sample portfolio report in our research environment and review our quote-adapter shape.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Public technical context
+      description: Optional — Python version, operating system, and relevant public issue links only.
+  - type: checkboxes
+    id: acknowledgement
+    attributes:
+      label: Acknowledgement
+      options:
+        - label: I understand this is a public, non-binding enquiry and contains no confidential information.
+          required: true

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Argentum privacy notice — public site and local Studio</title>
+    <meta name="description" content="How the Argentum public website, optional consent-gated analytics, GitHub links, and locally installed Studio handle data." />
+    <link rel="canonical" href="https://sebby1770.github.io/argentum/privacy.html" />
+    <meta property="og:type" content="website" /><meta property="og:site_name" content="Argentum" /><meta property="og:title" content="Argentum privacy notice" /><meta property="og:description" content="Public-site analytics stay off by default; Studio runs locally." /><meta property="og:url" content="https://sebby1770.github.io/argentum/privacy.html" /><meta property="og:image" content="https://sebby1770.github.io/argentum/assets/og.png" /><meta property="og:image:alt" content="Argentum — Pricing. Risk. Your market." />
+    <meta name="twitter:card" content="summary_large_image" /><meta name="twitter:title" content="Argentum privacy notice" /><meta name="twitter:description" content="Public-site analytics stay off by default; Studio runs locally." /><meta name="twitter:image" content="https://sebby1770.github.io/argentum/assets/og.png" />
+    <link rel="stylesheet" href="/argentum/assets/site.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="site-header"><div class="shell header-inner"><a class="brand" href="/argentum/">Argentum</a><nav class="nav" aria-label="Primary"><a href="/argentum/case-studies.html">Proof</a><a href="/argentum/faq.html">FAQ</a><a href="/argentum/about.html">About</a><a href="https://github.com/Sebby1770/argentum">GitHub</a><a class="nav-cta" href="/argentum/pricing.html">Setup &amp; support</a></nav></div></header>
+    <main id="main">
+      <nav class="shell breadcrumbs" aria-label="Breadcrumb"><ol><li><a href="/argentum/">Home</a></li><li aria-current="page">Privacy</li></ol></nav>
+      <header class="page-hero"><div class="shell"><p class="eyebrow">Last updated 24 August 2026</p><h1>Privacy, without vague promises.</h1><p class="lede">The public project site and the locally installed Studio are separate. This notice explains both so a website visit is not confused with running the software.</p></div></header>
+      <section class="section"><div class="shell faq-list">
+        <h2>Public website</h2><p>The public pages are static files hosted through GitHub Pages. They do not contain a contact form, account system, payment checkout, local Studio API, or portfolio uploader. GitHub may process routine hosting data under its own terms when it serves the pages.</p>
+        <h2>Analytics choice</h2><p>The tracked site configuration ships with no Google Analytics measurement ID, so no analytics script loads. If a future maintainer configures a valid ID, the site first asks for permission. Choosing “no thanks” keeps the script off. Choosing “allow analytics” stores that choice in your browser and loads Google Analytics with IP anonymisation requested. You can reopen Analytics choices in the footer whenever analytics is configured.</p>
+        <h2>Links and commercial enquiries</h2><p>Repository, issue, profile, and enquiry links open GitHub. Anything you submit there is handled by GitHub and may be public, depending on the destination. Do not put API keys, portfolio data, personal financial information, or confidential model details in a public issue. There is no claim that clicking an enquiry link creates a contract or sends a private message.</p>
+        <h2>Local Studio</h2><p>Studio runs on your machine by default. Feed settings are stored under the current user's operating-system configuration directory with restrictive file permissions where the platform supports them. The UI redacts stored header values. A configured credential is sent to the quote URL you select when Studio requests market data; it is not sent to this public website.</p>
+        <h2>Browser storage</h2><p>The public site may store only the analytics choice described above. Local Studio may store a cached quote in your browser and use a service-worker cache for its own static interface. Clear site data in your browser to remove those browser-side values.</p>
+        <h2>Security and limitations</h2><p>Studio denies unrecognised Host headers, cross-site browser requests, and state-changing requests without a local session token. Push ingest is disabled unless an operator configures a token or explicitly opts into unauthenticated loopback ingest. No software can promise absolute security; report suspected issues through the repository without posting exploit details or secrets publicly.</p>
+        <h2>Questions or changes</h2><p>For a privacy question or correction, open a minimal <a href="https://github.com/Sebby1770/argentum/issues">GitHub issue</a> without sensitive information. Material changes to this notice should be visible in repository history.</p>
+      </div></section>
+    </main>
+    <a class="button mobile-cta" href="/argentum/pricing.html">Setup &amp; support</a>
+    <footer class="site-footer"><div class="shell footer-inner"><div><strong>Argentum</strong><p class="fine">© <span data-year></span> Sebastian Forbes. Core code under MIT.</p></div><nav class="footer-links" aria-label="Footer"><a href="/argentum/faq.html">FAQ</a><a href="/argentum/about.html">About</a><a href="https://github.com/Sebby1770/argentum/issues">Issues</a><button type="button" data-analytics-settings hidden>Analytics choices</button></nav></div></footer>
+    <script src="/argentum/assets/site.js"></script><script src="/argentum/assets/analytics.js"></script>
+  </body>
+</html>

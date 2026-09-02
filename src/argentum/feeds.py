@@ -13,6 +13,7 @@ import csv
 import hashlib
 import io
 import json
+import math
 import re
 import threading
 import time
@@ -276,6 +277,8 @@ def parse_json_quote(payload: Any, symbol: str, *, field: str | None = None, sou
             data = payload
         else:
             spot = extract_spot(payload, field)
+            if not math.isfinite(spot) or spot <= 0:
+                raise MarketError(f"spot must be a positive finite number, got {spot!r}")
             return Quote(symbol=symbol.upper(), spot=spot, source=source, last=spot)
     spot = extract_spot(data, field)
     if field and data is not payload and isinstance(payload, dict):
@@ -295,6 +298,20 @@ def parse_json_quote(payload: Any, symbol: str, *, field: str | None = None, sou
     vol = coerce_number(_first_present(data.get("vol"), data.get("iv"), data.get("implied_vol"), data.get("impliedVolatility")))
     rate = coerce_number(_first_present(data.get("rate"), data.get("r")))
     div = coerce_number(_first_present(data.get("div"), data.get("dividend"), data.get("q")))
+    if not math.isfinite(spot) or spot <= 0:
+        raise MarketError(f"spot must be a positive finite number, got {spot!r}")
+    if bid is not None and bid <= 0:
+        raise MarketError(f"bid must be positive, got {bid!r}")
+    if ask is not None and ask <= 0:
+        raise MarketError(f"ask must be positive, got {ask!r}")
+    if bid is not None and ask is not None and ask < bid:
+        raise MarketError(f"ask must be greater than or equal to bid ({bid!r}, {ask!r})")
+    if vol is not None and not 0 < vol <= 5:
+        raise MarketError("vol must be a decimal fraction in (0, 5], e.g. 0.20 for 20%")
+    if rate is not None and not -1 <= rate <= 1:
+        raise MarketError("rate must be a decimal fraction in [-1, 1], e.g. 0.05 for 5%")
+    if div is not None and not -1 <= div <= 1:
+        raise MarketError("div must be a decimal fraction in [-1, 1], e.g. 0.02 for 2%")
     change = coerce_number(_first_present(data.get("change"), data.get("d")))
     change_pct = coerce_number(_first_present(data.get("change_pct"), data.get("dp"), data.get("changePercent")))
     if change is None and last is not None and prev is not None:
@@ -525,7 +542,7 @@ def fetch_bytes(
     host = _host_of(url)
     breaker = _breaker_for(host)
     breaker.guard()
-    req_headers = {"User-Agent": "ArgentumStudio/1.4", "Accept": "application/json,text/csv,*/*"}
+    req_headers = {"User-Agent": "ArgentumStudio/1.5", "Accept": "application/json,text/csv,*/*"}
     if headers:
         req_headers.update({k: v for k, v in headers.items() if k and v})
     last_error: Exception | None = None
