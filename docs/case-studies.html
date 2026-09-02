@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Argentum reproducible examples and case-study template</title>
+    <meta name="description" content="Reproduce Argentum benchmark prices, convention tests, and portfolio scenario reports; download an honest case-study template without invented customers." />
+    <link rel="canonical" href="https://sebby1770.github.io/argentum/case-studies.html" />
+    <meta property="og:type" content="website" /><meta property="og:site_name" content="Argentum" /><meta property="og:title" content="Argentum reproducible proof" /><meta property="og:description" content="Runnable examples and a case-study template — no invented customer stories." /><meta property="og:url" content="https://sebby1770.github.io/argentum/case-studies.html" /><meta property="og:image" content="https://sebby1770.github.io/argentum/assets/og.png" /><meta property="og:image:alt" content="Argentum — Pricing. Risk. Your market." />
+    <meta name="twitter:card" content="summary_large_image" /><meta name="twitter:title" content="Argentum reproducible proof" /><meta name="twitter:description" content="Runnable examples and a case-study template — no invented customer stories." /><meta name="twitter:image" content="https://sebby1770.github.io/argentum/assets/og.png" />
+    <link rel="stylesheet" href="/argentum/assets/site.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="site-header"><div class="shell header-inner"><a class="brand" href="/argentum/">Argentum</a><nav class="nav" aria-label="Primary"><a aria-current="page" href="/argentum/case-studies.html">Proof</a><a href="/argentum/faq.html">FAQ</a><a href="/argentum/about.html">About</a><a href="https://github.com/Sebby1770/argentum">GitHub</a><a class="nav-cta" href="/argentum/pricing.html">Setup &amp; support</a></nav></div></header>
+    <main id="main">
+      <nav class="shell breadcrumbs" aria-label="Breadcrumb"><ol><li><a href="/argentum/">Home</a></li><li aria-current="page">Reproducible proof</li></ol></nav>
+      <header class="page-hero"><div class="shell"><p class="eyebrow">Proof, not testimonials</p><h1>Run the evidence yourself.</h1><p class="lede">Argentum does not yet publish customer case studies, reviews, or performance claims. These are reproducible project examples and a template for documenting future work honestly.</p></div></header>
+      <section class="section"><div class="shell grid">
+        <article class="card proof"><p class="number">Benchmark 01</p><h2>Closed-form identity</h2><p>An at-the-money one-year Black–Scholes call with spot and strike 100, a 5% continuously compounded rate, no dividend, and 20% volatility prices at approximately 10.450583572.</p><pre><code>argentum vanilla --spot 100 --strike 100 \
+  --rate 0.05 --vol 0.20 --texp 1</code></pre><p>Then feed the price back to the implied-vol solver and check the 20% round trip.</p></article>
+        <article class="card proof"><p class="number">Benchmark 02</p><h2>Convention fixtures</h2><p>The test suite exercises calendar rules, day counts around leap-year boundaries, schedule stubs, curve interpolation, dual-curve swaps, solver limits, and numerical pricing engines.</p><pre><code>python -m pytest -q
+python -m pytest tests/test_daycount.py \
+  tests/test_curve.py tests/test_engines.py</code></pre><p>A passing test is evidence about the fixture it asserts — not blanket production validation.</p></article>
+        <article class="card proof"><p class="number">Benchmark 03</p><h2>Portable risk report</h2><p>The portfolio command retains normalized inputs, the Argentum version, engine, input digest, aggregate Greeks, tag groups, and scenario PnL in one report.</p><pre><code>argentum portfolio examples/sample_portfolio.csv \
+  --format json --output risk-report.json</code></pre><p>Commit the source portfolio and report together to preserve the path back to the mark.</p></article>
+      </div></section>
+      <section class="section"><div class="shell callout"><p class="eyebrow">Future customer evidence</p><h2>Publish context, reference, result, and limits.</h2><p>The template requires an independently reviewable reference and explicit permission before any organisation name, quote, logo, or performance statement is published.</p><div class="actions"><a class="button" href="/argentum/assets/case-study-template.md" download>Download the case-study template</a><a class="button secondary" href="https://github.com/Sebby1770/argentum/tree/main/tests">Inspect the tests</a></div></div></section>
+    </main>
+    <a class="button mobile-cta" href="/argentum/pricing.html">Setup &amp; support</a>
+    <footer class="site-footer"><div class="shell footer-inner"><div><strong>Argentum</strong><p class="fine">No customer reviews are represented on this page.</p></div><nav class="footer-links" aria-label="Footer"><a href="/argentum/privacy.html">Privacy</a><a href="/argentum/faq.html">FAQ</a><a href="/argentum/about.html">About</a><button type="button" data-analytics-settings hidden>Analytics choices</button></nav></div></footer>
+    <script src="/argentum/assets/site.js"></script><script src="/argentum/assets/analytics.js"></script>
+  </body>
+</html>

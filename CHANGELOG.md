@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.5.0 — 2026-08-24
+
+- Added validated CSV/JSON portfolio loading and deterministic text, JSON, and
+  CSV scenario reports with normalized inputs, version, engine, and input digest.
+- Added Portfolio import/export to Studio.
+- Packaged Studio assets inside the wheel so installed deployments work.
+- Moved feed configuration to the user's operating-system config directory with
+  atomic mode-`0600` writes and redacted secrets.
+- Removed wildcard CORS, added Host validation, per-process browser CSRF,
+  opt-in origins, disabled-by-default push ingest, request-size/type checks,
+  strict response headers, and untrusted-feed DOM sanitisation.
+- Added explicit calibration non-convergence diagnostics.
+- Added a separate GitHub Pages launch site with transparent support pricing,
+  reproducible proof, FAQ schema, privacy/consent controls, custom 404,
+  breadcrumbs, social metadata, maker disclosure, and brand-risk notes.
+- Version **1.5.0**
+
 ## 1.4.0 — 2026-08-24
 
 ### Added
@@ -60,7 +77,7 @@
 
 ## 1.0.0 — 2026-08-23
 
-First public release of Argentum, a production-grade Python derivatives library.
+First public release of the Argentum Python derivatives library.
 
 ### Time
 - ISDA day counts: Act/365F, Act/360, Act/Act ISDA, Act/Act ICMA, Act/Act AFB, 30/360, 30E/360, 30E/360 ISDA, Bus/252

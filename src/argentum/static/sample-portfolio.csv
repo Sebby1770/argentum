@@ -1,0 +1,4 @@
+tag,quantity,spot,strike,rate,div,vol,texp,type
+core,10,100,100,0.05,0.00,0.20,1.00,call
+upside,-5,100,110,0.05,0.00,0.20,1.00,call
+hedge,4,100,90,0.05,0.00,0.24,0.50,put

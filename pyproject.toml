@@ -1,13 +1,14 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "argentum"
-version = "1.4.0"
-description = "Production-grade derivatives pricing library: curves, bonds, swaps, vol, exotics, risk."
+version = "1.5.0"
+description = "Typed derivatives pricing and portfolio-risk reporting for Python teams."
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.10"
 authors = [{ name = "Sebastian Forbes" }]
 keywords = [
@@ -23,7 +24,6 @@ keywords = [
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Financial and Insurance Industry",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -42,12 +42,26 @@ argentum = "argentum.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/Sebby1770/argentum"
+Documentation = "https://github.com/Sebby1770/argentum#readme"
+Issues = "https://github.com/Sebby1770/argentum/issues"
+Source = "https://github.com/Sebby1770/argentum"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-argentum = ["py.typed"]
+argentum = [
+    "py.typed",
+    "static/*.css",
+    "static/*.html",
+    "static/*.js",
+    "static/*.json",
+    "static/*.svg",
+    "static/*.txt",
+    "static/*.xml",
+    "static/*.csv",
+    "static/media/*",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,5 +1,7 @@
 import json
+import stat
 import threading
+from http.client import HTTPConnection
 from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 
 import pytest
@@ -61,6 +63,19 @@ def test_json_spot_aliases():
     zero = parse_json_quote({"last": 10, "div": 0.0, "name": "Own X"}, "x")
     assert zero.div == 0.0
     assert zero.name == "Own X"
+
+
+def test_quote_units_are_explicit_decimal_fractions():
+    with pytest.raises(MarketError, match="decimal fraction"):
+        parse_json_quote({"spot": 100, "vol": 20}, "X")
+    with pytest.raises(MarketError, match="decimal fraction"):
+        parse_json_quote({"spot": 100, "rate": 5}, "X")
+    with pytest.raises(MarketError, match="spot must be a positive finite number"):
+        parse_json_quote({"spot": -1}, "X")
+    with pytest.raises(MarketError, match="spot must be a positive finite number"):
+        parse_json_quote(-1, "X")
+    with pytest.raises(MarketError, match="spot must be a positive finite number"):
+        parse_json_quote(float("inf"), "X")
 
 
 def test_nested_field_path():
@@ -128,6 +143,7 @@ def test_save_feed_preserves_http_secret_and_clears_on_demo():
     assert kept["has_secret"] is True
     raw = json.loads(studio_mod.FEED_FILE.read_text(encoding="utf-8"))
     assert raw["header_value"] == "secret-token"
+    assert stat.S_IMODE(studio_mod.FEED_FILE.stat().st_mode) == 0o600
     cleared = save_feed_config({"source": "demo", "symbol": "CCC"})
     assert cleared["has_secret"] is False
     assert cleared["header_value"] == ""
@@ -139,6 +155,117 @@ def _serve(handler_cls, threaded=False):
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     return server
+
+
+def _studio_server():
+    server = _serve(studio_mod.StudioHandler, threaded=True)
+    server.allowed_origins = ()
+    server.trusted_hosts = ("127.0.0.1", "localhost", "::1")
+    server.csrf_token = "test-csrf-token"
+    server.ingest_token = ""
+    server.allow_unauthenticated_ingest = False
+    return server
+
+
+def _studio_request(server, method, path, *, body=None, headers=None):
+    connection = HTTPConnection("127.0.0.1", server.server_address[1], timeout=3)
+    request_headers = {"Host": f"127.0.0.1:{server.server_address[1]}", **(headers or {})}
+    connection.request(method, path, body=body, headers=request_headers)
+    response = connection.getresponse()
+    payload = response.read()
+    result = response.status, dict(response.getheaders()), payload
+    connection.close()
+    return result
+
+
+def test_studio_rejects_dns_rebinding_and_cross_site_browser_requests():
+    server = _studio_server()
+    try:
+        status, _, _ = _studio_request(server, "GET", "/", headers={"Host": "attacker.example"})
+        assert status == 421
+        status, _, _ = _studio_request(
+            server,
+            "GET",
+            "/api/quote?source=demo&symbol=AAPL",
+            headers={"Origin": "https://attacker.example", "Sec-Fetch-Site": "cross-site"},
+        )
+        assert status == 403
+        server.allowed_origins = ("https://trusted.example",)
+        status, headers, payload = _studio_request(
+            server,
+            "GET",
+            "/api/session",
+            headers={"Origin": "https://trusted.example", "Sec-Fetch-Site": "cross-site"},
+        )
+        assert status == 200 and json.loads(payload)["csrf"] == "test-csrf-token"
+        assert headers["Access-Control-Allow-Origin"] == "https://trusted.example"
+        status, _, payload = _studio_request(
+            server,
+            "GET",
+            "/api/session",
+            headers={"Sec-Fetch-Site": "same-origin"},
+        )
+        assert status == 200 and json.loads(payload)["csrf"] == "test-csrf-token"
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_studio_requires_csrf_for_saved_feed_and_token_for_ingest():
+    server = _studio_server()
+    body = json.dumps({"source": "demo", "symbol": "AAPL"})
+    origin = f"http://127.0.0.1:{server.server_address[1]}"
+    try:
+        headers = {"Content-Type": "application/json", "Origin": origin, "Sec-Fetch-Site": "same-origin"}
+        status, _, _ = _studio_request(server, "POST", "/api/feed", body=body, headers=headers)
+        assert status == 403
+        status, _, _ = _studio_request(
+            server,
+            "POST",
+            "/api/feed",
+            body=body,
+            headers={**headers, "X-Argentum-CSRF": "test-csrf-token"},
+        )
+        assert status == 200
+        ingest = json.dumps({"symbol": "AAPL", "last": 100})
+        status, _, _ = _studio_request(
+            server, "POST", "/api/ingest", body=ingest, headers={"Content-Type": "application/json"}
+        )
+        assert status == 403
+        server.ingest_token = "push-secret"
+        status, _, _ = _studio_request(
+            server,
+            "POST",
+            "/api/ingest",
+            body=ingest,
+            headers={"Content-Type": "application/json", "X-Argentum-Ingest-Token": "push-secret"},
+        )
+        assert status == 200
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+def test_studio_rejects_non_json_and_oversized_posts_and_sets_security_headers():
+    server = _studio_server()
+    try:
+        status, _, _ = _studio_request(server, "POST", "/api/book", body="x", headers={"Content-Type": "text/plain"})
+        assert status == 415
+        status, _, _ = _studio_request(
+            server,
+            "POST",
+            "/api/book",
+            body=b"",
+            headers={"Content-Type": "application/json", "Content-Length": "1000001"},
+        )
+        assert status == 413
+        status, headers, _ = _studio_request(server, "GET", "/")
+        assert status == 200
+        assert "frame-ancestors 'none'" in headers["Content-Security-Policy"]
+        assert "Access-Control-Allow-Origin" not in headers
+    finally:
+        server.shutdown()
+        server.server_close()
 
 
 def test_own_http_json_venue():

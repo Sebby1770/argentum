@@ -55,7 +55,7 @@ def quote_for(symbol: str) -> dict[str, object]:
 
 
 class Venue(BaseHTTPRequestHandler):
-    server_version = "ArgentumOwnMarket/1.4"
+    server_version = "ArgentumOwnMarket/1.5"
 
     def log_message(self, fmt: str, *args: object) -> None:
         print("[own-market] " + (fmt % args))

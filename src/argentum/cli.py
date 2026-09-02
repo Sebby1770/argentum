@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 
 from argentum import __version__
@@ -72,6 +73,10 @@ def build_parser() -> argparse.ArgumentParser:
     studio = sub.add_parser("studio", help="Open the Argentum Studio web desk")
     studio.add_argument("--host", default="127.0.0.1")
     studio.add_argument("--port", type=int, default=8787)
+    studio.add_argument("--allow-origin", action="append", default=[], help="exact browser origin to allow (repeatable)")
+    studio.add_argument("--ingest-token", default=None, help="token required in X-Argentum-Ingest-Token")
+    studio.add_argument("--trusted-host", action="append", default=[], help="additional accepted Host name (repeatable)")
+    studio.add_argument("--allow-unauthenticated-ingest", action="store_true", help="allow tokenless loopback push ingest")
 
     heston = sub.add_parser("heston", help="Heston COS European call")
     heston.add_argument("--spot", type=float, default=100.0)
@@ -93,6 +98,11 @@ def build_parser() -> argparse.ArgumentParser:
     quote.add_argument("--header-value", default="", dest="header_value")
     quote.add_argument("--preset", default="", help="own | polygon | finnhub | alphavantage | iex")
     quote.add_argument("--json", action="store_true")
+
+    portfolio = sub.add_parser("portfolio", help="Price a CSV/JSON vanilla book and run desk scenarios")
+    portfolio.add_argument("path", help="UTF-8 .csv or .json portfolio")
+    portfolio.add_argument("--format", choices=("text", "json", "csv"), default="text")
+    portfolio.add_argument("--output", default="-", help="report path, or - for stdout")
     return p
 
 
@@ -156,7 +166,14 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "studio":
         from argentum.studio import serve
 
-        serve(args.host, args.port)
+        serve(
+            args.host,
+            args.port,
+            allowed_origins=tuple(args.allow_origin),
+            ingest_token=args.ingest_token or os.environ.get("ARGENTUM_INGEST_TOKEN"),
+            trusted_hosts=tuple(args.trusted_host),
+            allow_unauthenticated_ingest=args.allow_unauthenticated_ingest,
+        )
         return 0
     if args.cmd == "heston":
         from argentum.models.heston import HestonParams, heston_price
@@ -184,6 +201,23 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{quoted.symbol:8} {quoted.spot:12.4f}  {quoted.source}")
             if quoted.bid is not None and quoted.ask is not None:
                 print(f"bid/ask  {quoted.bid:.4f} / {quoted.ask:.4f}")
+        return 0
+    if args.cmd == "portfolio":
+        from pathlib import Path
+
+        from argentum.portfolio import load_portfolio, portfolio_report, report_csv, report_text
+
+        report = portfolio_report(load_portfolio(args.path))
+        if args.format == "json":
+            rendered = json.dumps(report, indent=2) + "\n"
+        elif args.format == "csv":
+            rendered = report_csv(report)
+        else:
+            rendered = report_text(report)
+        if args.output == "-":
+            sys.stdout.write(rendered)
+        else:
+            Path(args.output).write_text(rendered, encoding="utf-8")
         return 0
     return 2
 
