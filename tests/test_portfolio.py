@@ -1,3 +1,4 @@
+import argentum
 import json
 
 import pytest
@@ -16,7 +17,7 @@ ROWS = [
 def test_portfolio_report_groups_and_scenarios():
     report = portfolio_report(book_from_rows(ROWS))
     assert report["schema"] == "argentum.portfolio-risk.v1"
-    assert report["argentum_version"] == "1.5.0"
+    assert report["argentum_version"] == argentum.__version__
     assert report["model_engine"] == "black_scholes"
     assert len(report["input_sha256"]) == 64
     assert report["input_positions"][0]["tag"] == "core"
