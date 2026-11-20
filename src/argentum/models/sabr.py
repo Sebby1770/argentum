@@ -11,7 +11,7 @@ import math
 
 from argentum.errors import InputError
 from argentum.models.black import bachelier_price, black_price
-from argentum.types import OptionType, require_non_negative, require_positive
+from argentum.types import OptionType, require_non_negative
 
 
 def sabr_implied_vol(
@@ -107,7 +107,6 @@ def sabr_normal_vol(
             + (2.0 - 3.0 * rho * rho) / 24.0 * nu * nu
         )
         return one * (1.0 + corr * texp)
-    log_fk = math.log(f / k) if f > 0 and k > 0 else math.log(abs(f) + 1e-16) - math.log(abs(k) + 1e-16)
     z = (nu / alpha) * (f - k) / ((f * k) ** (beta / 2.0)) if beta != 0 else (nu / alpha) * (f - k)
     # A simpler equivalent used in rates: integrate CEV
     mid = 0.5 * (f + k)

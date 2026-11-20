@@ -7,13 +7,12 @@ from dataclasses import dataclass
 from argentum.engines.fd import fd_price
 from argentum.engines.montecarlo import gbm_european
 from argentum.models.bjerksund_stensland import bjerksund_stensland
-from argentum.models.black import black_price
 from argentum.models.black_scholes import greeks as bs_greeks
 from argentum.models.black_scholes import implied_vol, price as bs_price
 from argentum.models.binomial import leisen_reimer_price
 from argentum.time.date import Date, DateLike, as_date
 from argentum.time.daycount import DayCount
-from argentum.types import ExerciseStyle, Greeks, OptionType, PriceResult
+from argentum.types import ExerciseStyle, OptionType, PriceResult
 
 
 @dataclass(frozen=True)

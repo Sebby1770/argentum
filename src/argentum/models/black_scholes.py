@@ -1,18 +1,21 @@
 """Black–Scholes–Merton (1973) and Garman–Kohlhagen (1983).
 
-All greeks are analytic. Implied volatility uses a Li (2011) / Jäckel-style
-seed plus Halley, with a Brent fallback. Inputs may be scalars; numpy arrays
-are accepted for ``price`` only.
+All greeks are analytic. Implied volatility inverts the out-of-the-money
+option from a Brenner–Subrahmanyam seed with Halley, then Newton, then a
+Brent fallback. ``price`` also accepts NumPy arrays (it broadcasts through
+:func:`argentum.models.vectorized.price_array`); for whole chains use that
+module directly, including ``implied_vol_array``.
 """
 
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+
+import numpy as np
 
 from argentum.errors import ConvergenceError, InputError
 from argentum.math.solvers import brent, newton
-from argentum.math.special import black_d1_d2, discount_factor, norm_cdf, norm_pdf, norm_sf
+from argentum.math.special import black_d1_d2, discount_factor, norm_cdf, norm_pdf
 from argentum.types import Greeks, OptionType, PriceResult, require_finite, require_non_negative, require_positive
 
 
@@ -29,7 +32,11 @@ def price(
     texp: float,
     option_type: OptionType | str = OptionType.CALL,
 ) -> float:
-    """Discounted Black–Scholes price (European)."""
+    """Discounted Black–Scholes price (European). Arrays broadcast."""
+    if any(isinstance(x, np.ndarray) for x in (spot, strike, rate, div, vol, texp, option_type)):
+        from argentum.models.vectorized import price_array
+
+        return price_array(spot, strike, rate, div, vol, texp, option_type)  # type: ignore[return-value]
     spot = require_positive("spot", spot)
     strike = require_positive("strike", strike)
     vol = require_non_negative("vol", vol)
@@ -85,10 +92,10 @@ def greeks(
     nd1 = norm_pdf(d1)
     if opt is OptionType.CALL:
         n_d1 = norm_cdf(d1)
-        n_d2 = norm_cdf(d2)
+        norm_cdf(d2)
     else:
         n_d1 = -norm_cdf(-d1)
-        n_d2 = -norm_cdf(-d2)
+        -norm_cdf(-d2)
     delta = df_q * n_d1
     gamma = df_q * nd1 / (spot * vol * sqrt_t)
     vega = spot * df_q * nd1 * sqrt_t
@@ -191,7 +198,7 @@ def _implied_vol_seed(undiscounted: float, fwd: float, strike: float, texp: floa
     """Brenner–Subrahmanyam ATM seed, with a deep ITM/OTM log-moneyness tweak."""
     if texp <= 0.0:
         return 0.0
-    intrinsic = max(fwd - strike, 0.0)
+    max(fwd - strike, 0.0)
     value = max(undiscounted - 0.0, 0.0)
     # use call equivalent
     time_value = max(value, 1e-16)

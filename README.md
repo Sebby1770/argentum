@@ -120,7 +120,7 @@ browser access and additional Host names remain opt-in.
 1. **No silent NaNs.** Domain errors raise `InputError` / `CurveError` / `ConvergenceError`.
 2. **Evaluation date is an argument**, never a process-global.
 3. **Discounting and forecasting are separate curves.** Single-curve is `discount is forecast`.
-4. **Greeks are analytic where the model is analytic.** Vega is per 1.0 of volatility, not per vol-point. Theta is calendar-day (`/365`).
+4. **Greeks are analytic where the model is analytic.** Vega is per 1.0 of volatility, not per vol-point. Theta is per year (`-∂V/∂T`); `Greeks.theta_per_day` is the one-day decay (`/365`).
 5. **Day counts follow the 2006 ISDA Definitions.** Act/Act ICMA requires a reference period.
 6. **Implied vol is a round-trip.** `iv(price(σ)) = σ` to `1e-10` on a wide moneyness grid.
 

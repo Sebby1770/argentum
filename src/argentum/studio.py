@@ -87,7 +87,13 @@ def _f(values: dict[str, Any], key: str, default: float) -> float:
         raw = raw[0] if raw else default
     if raw is None or raw == "":
         return float(default)
-    return float(raw)
+    try:
+        value = float(raw)
+    except (TypeError, ValueError) as exc:
+        raise InputError(f"{key} must be a number") from exc
+    if not math.isfinite(value):
+        raise InputError(f"{key} must be finite")
+    return value
 
 
 def _s(values: dict[str, Any], key: str, default: str) -> str:
@@ -587,7 +593,7 @@ class StudioHandler(BaseHTTPRequestHandler):
         except ValueError:
             return False
         allowed = {str(host).lower().rstrip(".") for host in getattr(self.server, "trusted_hosts", ())}
-        return bool(hostname) and hostname.lower().rstrip(".") in allowed
+        return hostname is not None and bool(hostname) and hostname.lower().rstrip(".") in allowed
 
     def _has_csrf(self) -> bool:
         supplied = self.headers.get("X-Argentum-CSRF", "")
@@ -626,7 +632,13 @@ class StudioHandler(BaseHTTPRequestHandler):
         return True
 
     def _json(self, payload: Any, status: int = 200) -> None:
-        body = json.dumps(payload, default=str).encode("utf-8")
+        try:
+            body = json.dumps(payload, default=str, allow_nan=False).encode("utf-8")
+        except ValueError:
+            # A model produced NaN/inf from finite inputs: say so rather than emit
+            # invalid JSON (RFC 8259 has no NaN token, and res.json() would throw).
+            status = HTTPStatus.UNPROCESSABLE_ENTITY
+            body = json.dumps({"error": "result is not a finite number for these inputs"}).encode("utf-8")
         self.send_response(status)
         self._headers("application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))

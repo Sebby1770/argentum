@@ -52,7 +52,6 @@ def bjerksund_stensland_call(
     )
     b_inf = beta / (beta - 1.0) * strike
     b0 = max(strike, rate / div * strike)
-    h_t = -(b_inf - b0) / strike * (1.0 - math.exp(-div * texp))  # 2002 uses a slightly different trigger
     # 2002 trigger
     ht = -(div * texp + 2.0 * vol * math.sqrt(texp)) * (b0 / (b_inf - b0))
     i = b0 + (b_inf - b0) * (1.0 - math.exp(ht))

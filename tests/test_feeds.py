@@ -99,12 +99,12 @@ def test_vendor_quote_shapes():
 def test_url_must_be_http():
     try:
         validate_feed_url("file:///etc/passwd")
-        assert False, "should have rejected file"
+        raise AssertionError("should have rejected file")
     except MarketError:
         pass
     try:
         validate_feed_url("http://169.254.169.254/latest/meta")
-        assert False, "should have rejected metadata"
+        raise AssertionError("should have rejected metadata")
     except MarketError:
         pass
     url = render_url("https://venue.test/q/{symbol}", "MSFT")

@@ -1,5 +1,5 @@
 from argentum.termstructures import DepositQuote, SwapQuote, YieldCurve, bootstrap_yield_curve
-from argentum.time import TARGET, Date, Period
+from argentum.time import TARGET, Date
 from argentum.types import Compounding
 
 

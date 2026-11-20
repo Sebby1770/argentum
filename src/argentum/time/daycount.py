@@ -6,12 +6,17 @@ fractions are signed: ``year_fraction(d2, d1) == -year_fraction(d1, d2)``.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from calendar import isleap, monthrange
 from datetime import date
 from enum import Enum
 
 from argentum.errors import InputError
 from argentum.time.date import Date, DateLike, as_date
+
+if TYPE_CHECKING:
+    from argentum.time.calendar import Calendar
 
 
 def _py(d: DateLike) -> date:
@@ -52,7 +57,7 @@ class DayCount(str, Enum):
         *,
         ref_start: DateLike | None = None,
         ref_end: DateLike | None = None,
-        calendar: object | None = None,
+        calendar: "Calendar | None" = None,
         termination: DateLike | None = None,
     ) -> float:
         d1 = _py(start)
@@ -100,7 +105,7 @@ class DayCount(str, Enum):
             return n / 252.0
         raise InputError(f"unhandled day count {self}")
 
-    def name(self) -> str:
+    def name(self) -> str:  # type: ignore[override]
         return {
             DayCount.ACT_365F: "Actual/365 (Fixed)",
             DayCount.ACT_365L: "Actual/365L",

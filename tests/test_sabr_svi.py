@@ -1,6 +1,6 @@
 from argentum.models.black import black_price
 from argentum.models.sabr import sabr_implied_vol, sabr_price
-from argentum.models.svi import RawSVI, svi_from_atm
+from argentum.models.svi import svi_from_atm
 from argentum.types import OptionType
 
 

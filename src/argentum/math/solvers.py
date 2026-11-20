@@ -75,7 +75,6 @@ def brent(
         a, b, fa, fb = b, a, fb, fa
     c, fc = a, fa
     d = b - a
-    e = d
     mflag = True
     for i in range(1, maxiter + 1):
         if fb == 0.0 or abs(b - a) < tol:
