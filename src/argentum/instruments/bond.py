@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import math
 from dataclasses import dataclass
 
@@ -15,6 +17,9 @@ from argentum.time.period import Period
 from argentum.time.schedule import Schedule, make_schedule
 from argentum.types import BusinessDayConvention as BDC
 from argentum.types import Compounding, Frequency
+
+if TYPE_CHECKING:
+    from argentum.time.calendar import Calendar
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,7 +39,7 @@ class Bond:
     coupon: float
     frequency: Frequency
     day_count: DayCount = DayCount.THIRTY_360_BOND
-    calendar: object | None = None
+    calendar: "Calendar | None" = None
     convention: BDC = BDC.UNADJUSTED
     settlement_days: int = 0
     compounding: Compounding = Compounding.COMPOUNDED
@@ -173,7 +178,6 @@ class Bond:
 
     def z_spread(self, as_of: DateLike, dirty_price: float, curve: YieldCurve) -> float:
         """Constant spread s on the discount curve: DF_mkt(t) * exp(-s t)."""
-        d = as_date(as_of)
         flows = self.cashflows(as_of)
 
         def obj(s: float) -> float:

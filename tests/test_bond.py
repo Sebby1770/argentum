@@ -1,4 +1,3 @@
-import math
 
 from argentum.instruments import Bond
 from argentum.termstructures import YieldCurve

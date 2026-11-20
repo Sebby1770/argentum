@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.6.0 — 2026-11-20
+
+### Added
+- `argentum.models.charfn`: one COS (Fang–Oosterlee) engine for Black–Scholes,
+  Merton jumps, Variance Gamma, NIG, Heston and Bates, vectorised over strikes;
+  `model_smile` turns any of them into an implied-vol smile.
+- `argentum.models.vectorized`: `price_array`, `greeks_array`,
+  `implied_vol_array` (safeguarded Newton, `errors="nan"` for bad quotes) and
+  `chain` for whole strike × expiry grids.
+- `Greeks.theta_per_day`.
+- CI gates: ruff (bug rules), mypy, coverage floor.
+
+### Fixed
+- `heston_price` was 4.5e-5 off Fang–Oosterlee's reference 5.785155435; it now
+  uses the shared engine and matches to nine digits.
+- `require_positive` / `require_non_negative` let NaN and infinity through, so
+  Studio answered `{"npv": NaN}` (invalid JSON). Inputs are now rejected with a
+  400 and the server never emits NaN tokens.
+- Theta was documented as per calendar day but is per year; docs corrected and
+  the Lab shows theta per day.
+- `price()` claimed NumPy array support but rejected arrays; it now broadcasts.
+- 11 mypy errors and dead code found by lint.
+
 ## 1.5.0 — 2026-08-24
 
 - Added validated CSV/JSON portfolio loading and deterministic text, JSON, and

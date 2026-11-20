@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 from argentum.termstructures.hazard import HazardCurve
 from argentum.termstructures.yield_curve import YieldCurve
-from argentum.time.date import Date, DateLike, as_date
+from argentum.time.date import Date
 from argentum.time.daycount import DayCount
 from argentum.time.schedule import make_schedule
 from argentum.types import Frequency

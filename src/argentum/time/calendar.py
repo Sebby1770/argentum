@@ -8,7 +8,6 @@ observance rules (Saturday → Friday, Sunday → Monday) unless noted.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from calendar import monthrange
 from datetime import date, timedelta
 from functools import lru_cache
 

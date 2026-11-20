@@ -40,7 +40,7 @@ async function mark() {
     metric("Delta", data.greeks.delta.toFixed(4)),
     metric("Gamma", data.greeks.gamma.toFixed(5)),
     metric("Vega", data.greeks.vega.toFixed(4)),
-    metric("Theta", data.greeks.theta.toFixed(4)),
+    metric("Theta / day", (data.greeks.theta / 365).toFixed(4)),
     metric("Rho", data.greeks.rho.toFixed(4)),
     metric("Volga", data.greeks.volga.toFixed(4)),
     metric("American", data.american.toFixed(6))

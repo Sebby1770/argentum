@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+from typing import TYPE_CHECKING
+
 import math
 from dataclasses import dataclass
 
@@ -11,7 +14,10 @@ from argentum.errors import CurveError, InputError
 from argentum.math.interpolation import Interpolator, make_interpolator
 from argentum.time.date import Date, DateLike, as_date
 from argentum.time.daycount import DayCount
-from argentum.types import Compounding, Frequency, require_positive
+from argentum.types import Compounding, Frequency
+
+if TYPE_CHECKING:
+    from argentum.time.calendar import Calendar
 
 
 def _rate_from_df(df: float, t: float, compounding: Compounding, frequency: Frequency) -> float:
@@ -59,7 +65,7 @@ class YieldCurve:
     compounding: Compounding = Compounding.CONTINUOUS
     frequency: Frequency = Frequency.ANNUAL
     interpolation: str = "log_discount"
-    calendar: object | None = None
+    calendar: "Calendar | None" = None
 
     def t(self, d: DateLike) -> float:
         return self.day_count.year_fraction(self.as_of, as_date(d), calendar=self.calendar)
@@ -101,18 +107,18 @@ class YieldCurve:
     def from_discount_factors(
         cls,
         as_of: DateLike,
-        dates: list[DateLike],
-        dfs: list[float],
+        dates: Sequence[DateLike],
+        dfs: Sequence[float],
         *,
         day_count: DayCount = DayCount.ACT_365F,
         interpolation: str = "log_discount",
         interpolator_kind: str = "linear",
         compounding: Compounding = Compounding.CONTINUOUS,
         frequency: Frequency = Frequency.ANNUAL,
-        calendar: object | None = None,
+        calendar: "Calendar | None" = None,
     ) -> "YieldCurve":
         as_of_d = as_date(as_of)
-        times = np.array([day_count.year_fraction(as_of_d, as_date(d), calendar=calendar) for d in dates], dtype=float)
+        times = np.array([day_count.year_fraction(as_of_d, as_date(d), calendar=calendar) for d in dates], dtype=np.float64)
         df_arr = np.array(dfs, dtype=float)
         if np.any(df_arr <= 0.0):
             raise CurveError("discount factors must be positive")
@@ -155,7 +161,7 @@ class YieldCurve:
         compounding: Compounding = Compounding.CONTINUOUS,
         frequency: Frequency = Frequency.ANNUAL,
         interpolator_kind: str = "linear",
-        calendar: object | None = None,
+        calendar: "Calendar | None" = None,
     ) -> "YieldCurve":
         as_of_d = as_date(as_of)
         dfs = []

@@ -1,7 +1,6 @@
 from argentum.instruments import CapFloor, CreditDefaultSwap, InterestRateSwap, Swaption, VanillaOption
 from argentum.termstructures import HazardCurve, YieldCurve
 from argentum.time import Date
-from argentum.types import OptionType
 
 
 def test_vanilla_option_analytic():

@@ -9,7 +9,6 @@ from dataclasses import dataclass
 import numpy as np
 
 from argentum.termstructures.yield_curve import YieldCurve
-from argentum.time.date import Date
 
 
 @dataclass(frozen=True, slots=True)

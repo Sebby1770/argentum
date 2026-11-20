@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from argentum.errors import InputError
-from argentum.time.calendar import Calendar, NullCalendar, WeekendsOnly
+from argentum.time.calendar import Calendar, WeekendsOnly
 from argentum.time.date import Date, DateLike, as_date
 from argentum.time.period import Period
 from argentum.types import BusinessDayConvention as BDC
@@ -93,8 +93,8 @@ def make_schedule(
         raise InputError("schedule end must be after start")
 
     if generation == DateGeneration.ZERO:
-        dates = (start_d, end_d)
-        return Schedule(dates, cal, convention, period, end_of_month)
+        zero: tuple[Date, ...] = (start_d, end_d)
+        return Schedule(zero, cal, convention, period, end_of_month)
 
     if generation == DateGeneration.IMM:
         dates = _imm_schedule(start_d, end_d)
@@ -145,7 +145,6 @@ def make_schedule(
 
 def _imm_schedule(start: Date, end: Date) -> tuple[Date, ...]:
     dates = [start]
-    year, month = start.year, start.month
     # first IMM strictly after start
     while True:
         imm = Date.next_imm(dates[-1], quarterly=True)
@@ -154,7 +153,7 @@ def _imm_schedule(start: Date, end: Date) -> tuple[Date, ...]:
         dates.append(imm)
         if len(dates) > 512:
             raise InputError("IMM schedule overflow")
-        year, month = imm.year, imm.month
+        _year, _month = imm.year, imm.month
     if dates[-1] != end:
         dates.append(end)
     return tuple(dates)

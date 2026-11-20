@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import math
 from dataclasses import dataclass
 
@@ -11,6 +13,9 @@ from argentum.errors import CurveError
 from argentum.math.solvers import newton
 from argentum.time.date import Date, DateLike, as_date
 from argentum.time.daycount import DayCount
+
+if TYPE_CHECKING:
+    from argentum.termstructures.yield_curve import YieldCurve
 
 
 @dataclass(frozen=True)
@@ -63,7 +68,7 @@ class HazardCurve:
 
 def par_cds_spread(
     hazard: HazardCurve,
-    discount: "object",
+    discount: "YieldCurve",
     maturity: DateLike | float,
     *,
     recovery: float | None = None,
@@ -89,7 +94,7 @@ def par_cds_spread(
 
 def bootstrap_hazard(
     as_of: DateLike,
-    discount: object,
+    discount: "YieldCurve",
     quotes: list[tuple[float, float]],
     *,
     recovery: float = 0.4,
