@@ -37,7 +37,8 @@ from argentum.types import OptionType, require_finite, require_non_negative, req
 class CharacteristicModel(Protocol):
     """A model given by ``φ(u, T) = E[exp(i u X_T)]`` of the martingale log-return."""
 
-    name: str
+    @property
+    def name(self) -> str: ...
 
     def cf(self, u: np.ndarray, texp: float) -> np.ndarray: ...
 
