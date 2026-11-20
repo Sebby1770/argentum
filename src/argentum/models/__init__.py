@@ -2,6 +2,16 @@ from argentum.models.asian import geometric_asian_price, turnbull_wakeman_price
 from argentum.models.barriers import barrier_price
 from argentum.models.binomial import crr_price, leisen_reimer_price
 from argentum.models.bjerksund_stensland import bjerksund_stensland
+from argentum.models.charfn import (
+    BatesCF,
+    BlackScholesCF,
+    HestonCF,
+    MertonJumpCF,
+    NIGCF,
+    VarianceGammaCF,
+    cos_price,
+    model_smile,
+)
 from argentum.models.black import bachelier_implied_vol, bachelier_price, black_implied_vol, black_price
 from argentum.models.black_scholes import digital_asset, digital_cash, greeks, implied_vol, price, result
 from argentum.models.compound import forward_start, geske_compound, simple_chooser
@@ -16,9 +26,22 @@ from argentum.models.quanto import quanto_price
 from argentum.models.sabr import sabr_implied_vol, sabr_normal_vol, sabr_price, sabr_smile, sabr_surface
 from argentum.models.svi import RawSVI, svi_from_atm
 from argentum.models.variance import black_variance_strike, log_contract_fair_variance
+from argentum.models.vectorized import chain, greeks_array, implied_vol_array, price_array
 
 __all__ = [
+    "BatesCF",
+    "BlackScholesCF",
+    "HestonCF",
     "HestonParams",
+    "MertonJumpCF",
+    "NIGCF",
+    "VarianceGammaCF",
+    "chain",
+    "cos_price",
+    "greeks_array",
+    "implied_vol_array",
+    "model_smile",
+    "price_array",
     "HullWhite1F",
     "RawSVI",
     "bachelier_implied_vol",
