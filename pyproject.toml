@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "argentum"
-version = "1.5.0"
+version = "1.6.0"
 description = "Typed derivatives pricing and portfolio-risk reporting for Python teams."
 readme = "README.md"
 license = "MIT"
