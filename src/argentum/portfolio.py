@@ -64,6 +64,9 @@ def position_from_mapping(row: Mapping[str, Any], *, row_number: int | None = No
         tag = str(row.get("tag", "")).strip()
         if len(tag) > 128:
             raise InputError("tag must be at most 128 characters")
+        underlying = str(row.get("underlying") or row.get("symbol") or "").strip()
+        if len(underlying) > 64:
+            raise InputError("underlying must be at most 64 characters")
         raw_quantity = row.get("quantity")
         quantity = (
             _number(row, "quantity")
@@ -80,6 +83,7 @@ def position_from_mapping(row: Mapping[str, Any], *, row_number: int | None = No
             texp=texp,
             option_type=kind,
             tag=tag,
+            underlying=underlying,
         )
     except InputError as exc:
         raise InputError(f"{where}{exc}") from exc
@@ -140,6 +144,8 @@ def portfolio_report(book: Book, shocks: list[Shock] | None = None) -> dict[str,
             "vol": pos.vol,
             "texp": pos.texp,
             "type": OptionType(pos.option_type).value,
+            # Only present when set, so 1.5 input digests stay reproducible.
+            **({"underlying": pos.underlying} if pos.underlying else {}),
         }
         for pos in book.positions
     ]

@@ -1,8 +1,9 @@
 """Book-level market risk: full-revaluation VaR / ES and P&L explain.
 
-Positions are grouped into *underlyings by tag*: positions sharing a tag
-share a spot factor and an implied-vol factor (an untagged position is its
-own underlying). Every scenario revalues every position with the
+Positions are grouped into *underlyings*: by ``VanillaPosition.underlying``
+when it is set, otherwise by spot level (positions marked at the same spot
+are taken to be on the same asset). Each underlying has one spot factor and
+one implied-vol factor. Tags stay what they are elsewhere — strategy labels. Every scenario revalues every position with the
 vectorised Black–Scholes engine — no delta-normal shortcut — and the
 delta–gamma–vega–theta Taylor estimate is reported alongside, so the gap
 between the two (the non-linearity a Greeks report hides) is visible.
@@ -44,8 +45,8 @@ def _vectors(book: Book) -> _Vectors:
         raise InputError("book has no positions")
     names: list[str] = []
     factor = []
-    for i, pos in enumerate(book.positions):
-        key = pos.tag or f"_{i}"
+    for pos in book.positions:
+        key = pos.underlying or f"spot={pos.spot:g}"
         if key not in names:
             names.append(key)
         factor.append(names.index(key))
@@ -198,9 +199,10 @@ def historical_var(
 ) -> dict[str, Any]:
     """Historical-simulation VaR / ES: replay aligned daily log-returns.
 
-    ``returns[tag]`` is one series per underlying (same length for all, day
-    ``i`` of every series applied together). Missing tags get zero moves.
-    Optional ``vol_changes[tag]`` replays additive implied-vol changes.
+    ``returns[name]`` is one series per underlying name (same length for all,
+    day ``i`` of every series applied together); unnamed positions are keyed
+    ``"spot=<level>"``. Missing names get zero moves. Optional
+    ``vol_changes[name]`` replays additive implied-vol changes.
     """
     if not 0.5 < alpha < 1.0:
         raise InputError("alpha must be in (0.5, 1)")

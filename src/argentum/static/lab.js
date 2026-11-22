@@ -49,7 +49,8 @@ async function mark() {
     metric("Analytic", data.npv.toFixed(6)),
     metric("Tree", data.tree.toFixed(6)),
     metric("FD", data.fd.toFixed(6)),
-    metric("MC ±", `${data.mc.toFixed(4)} ± ${data.mc_error.toFixed(4)}`)
+    metric("MC ±", `${data.mc.toFixed(4)} ± ${data.mc_error.toFixed(4)}`),
+    metric("LSM American ±", `${data.lsm.toFixed(4)} ± ${data.lsm_error.toFixed(4)}`)
   );
   compare.textContent = `Analytic − tree = ${(data.npv - data.tree).toFixed(6)} · FD gap ${(data.npv - data.fd).toFixed(4)} · intrinsic ${data.intrinsic.toFixed(4)}`;
   lineChart(chart, data.grid.spot, data.grid.value, {

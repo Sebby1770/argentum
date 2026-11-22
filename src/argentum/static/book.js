@@ -112,7 +112,60 @@ async function run() {
     metric("Positions", String(data.n))
   );
   paintScenarios(data.scenarios);
+  await runRisk();
 }
+
+const riskForm = document.querySelector("#risk-form");
+const riskMetrics = document.querySelector("#risk-metrics");
+const riskChart = document.querySelector("#risk-chart");
+const riskNote = document.querySelector("#risk-note");
+const riskErr = document.querySelector("#risk-err");
+let latestRisk = null;
+
+function paintRisk() {
+  if (!latestRisk) return;
+  const r = latestRisk;
+  histogramChart(riskChart, r.histogram.edges, r.histogram.counts, { cut: -r.var, label: `P&L · ${r.horizon_days}d` });
+}
+
+async function runRisk() {
+  riskErr.textContent = "";
+  const params = Object.fromEntries(new FormData(riskForm).entries());
+  const body = positions ? { ...params, positions } : params;
+  const res = await fetch("/api/risk", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    riskErr.textContent = data.error || "VaR failed";
+    return;
+  }
+  latestRisk = data;
+  const level = `${(data.alpha * 100).toFixed(1).replace(/\.0$/, "")}%`;
+  riskMetrics.replaceChildren(
+    metric(`VaR ${level}`, data.var.toFixed(4)),
+    metric(`ES ${level}`, data.es.toFixed(4)),
+    metric("Greeks-only VaR", data.var_taylor.toFixed(4)),
+    metric("P&L stdev", data.stdev_pnl.toFixed(4))
+  );
+  const gap = data.var - data.var_taylor;
+  riskNote.textContent =
+    `${data.n_scenarios.toLocaleString()} scenarios over ${data.underlyings.length} underlying` +
+    `${data.underlyings.length === 1 ? "" : "s"} (${data.underlyings.join(", ")}). ` +
+    `Full revaluation ${gap >= 0 ? "exceeds" : "is below"} the second-order Greeks estimate by ${Math.abs(gap).toFixed(4)}. Seed ${data.seed}.`;
+  paintRisk();
+}
+
+riskForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  runRisk().catch((exc) => {
+    riskErr.textContent = String(exc);
+  });
+});
+
+window.addEventListener("resize", () => paintRisk());
 
 fileInput.addEventListener("change", async () => {
   const file = fileInput.files && fileInput.files[0];

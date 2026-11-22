@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Compare implied-volatility smiles from six characteristic-function models — Black–Scholes, Merton jumps, Variance Gamma, NIG, Heston and Bates — priced locally by the COS method." />
+    <title>Models — Argentum</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="top">
+      <a class="wordmark" href="/"><span class="bar" aria-hidden="true"></span>Argentum</a>
+      <nav aria-label="Studio"></nav>
+    </header>
+    <main class="wrap desk" id="main">
+      <form class="panel" id="form">
+        <p class="eyebrow">COS engine · six models</p>
+        <h1 class="desk-title">One strip, six smiles.</h1>
+        <p class="note">Each model prices the same 21 strikes by Fang–Oosterlee COS inversion; the chart shows the Black–Scholes vol each price implies. Jumps and stochastic vol bend the flat line into a skew.</p>
+        <fieldset class="params">
+          <legend>Market</legend>
+          <label>Spot <input name="spot" type="number" step="any" value="100" /></label>
+          <label>Rate <input name="rate" type="number" step="any" value="0.03" /></label>
+          <label>Dividend <input name="div" type="number" step="any" value="0" /></label>
+          <label>Expiry (years) <input name="texp" type="number" step="any" min="0.01" value="0.5" /></label>
+        </fieldset>
+        <details class="params" open>
+          <summary>Black–Scholes &amp; Merton</summary>
+          <label>BS vol <input name="bs_vol" type="number" step="any" value="0.2" /></label>
+          <label>Merton diffusion vol <input name="merton_vol" type="number" step="any" value="0.15" /></label>
+          <label>Jump intensity λ <input name="merton_lam" type="number" step="any" value="0.5" /></label>
+          <label>Mean log-jump μ <input name="merton_mu" type="number" step="any" value="-0.1" /></label>
+          <label>Jump vol δ <input name="merton_delta" type="number" step="any" value="0.15" /></label>
+        </details>
+        <details class="params">
+          <summary>Variance Gamma &amp; NIG</summary>
+          <label>VG σ <input name="vg_sigma" type="number" step="any" value="0.2" /></label>
+          <label>VG ν <input name="vg_nu" type="number" step="any" value="0.25" /></label>
+          <label>VG θ <input name="vg_theta" type="number" step="any" value="-0.15" /></label>
+          <label>NIG α <input name="nig_alpha" type="number" step="any" value="12" /></label>
+          <label>NIG β <input name="nig_beta" type="number" step="any" value="-4" /></label>
+          <label>NIG δ <input name="nig_delta" type="number" step="any" value="0.25" /></label>
+        </details>
+        <details class="params">
+          <summary>Heston &amp; Bates</summary>
+          <label>κ <input name="heston_kappa" type="number" step="any" value="2" /></label>
+          <label>θ <input name="heston_theta" type="number" step="any" value="0.04" /></label>
+          <label>σ (vol of variance) <input name="heston_sigma" type="number" step="any" value="0.5" /></label>
+          <label>ρ <input name="heston_rho" type="number" step="any" min="-1" max="1" value="-0.7" /></label>
+          <label>v₀ <input name="heston_v0" type="number" step="any" value="0.04" /></label>
+          <label>Bates λ <input name="bates_lam" type="number" step="any" value="0.3" /></label>
+          <label>Bates μ <input name="bates_mu" type="number" step="any" value="-0.12" /></label>
+          <label>Bates δ <input name="bates_delta" type="number" step="any" value="0.1" /></label>
+        </details>
+        <button class="btn" type="submit">Price the strip</button>
+        <p class="err" id="err" role="alert"></p>
+      </form>
+      <div>
+        <div class="legend" id="legend" aria-label="Models shown"></div>
+        <canvas class="chart" id="chart" width="900" height="360" aria-label="Implied volatility smiles by model"></canvas>
+        <div class="table-scroll">
+          <table class="data" id="table"></table>
+        </div>
+      </div>
+    </main>
+    <footer>Argentum Models · COS (Fang–Oosterlee 2008) · implied vols from the OTM side</footer>
+    <script src="/chrome.js"></script>
+    <script src="/charts.js"></script>
+    <script src="/models.js"></script>
+  </body>
+</html>

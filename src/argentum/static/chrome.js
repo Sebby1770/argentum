@@ -8,6 +8,7 @@ const ARGENTUM_LINKS = [
   ["/rates", "Rates"],
   ["/bond", "Bond"],
   ["/credit", "Credit"],
+  ["/models", "Models"],
   ["/book", "Portfolio"],
   ["/docs", "Docs"],
 ];

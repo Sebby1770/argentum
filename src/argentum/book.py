@@ -20,6 +20,7 @@ class VanillaPosition:
     texp: float
     option_type: OptionType = OptionType.CALL
     tag: str = ""
+    underlying: str = ""  # risk factor name; empty means "identified by its spot"
 
     def value(self) -> PriceResult:
         opt = OptionType(self.option_type)
