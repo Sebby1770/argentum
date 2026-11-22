@@ -24,12 +24,24 @@ ArrayLike = Any
 def _omega(option_type: ArrayLike) -> np.ndarray:
     if isinstance(option_type, OptionType):
         return np.asarray(float(option_type.omega))
+    if isinstance(option_type, (list, tuple)):
+        # np.asarray would stringify str-mixin Enum members as "OptionType.CALL".
+        option_type = [x.value if isinstance(x, OptionType) else x for x in option_type]
     arr = np.asarray(option_type)
     if arr.dtype.kind in "iuf":
         out = np.sign(arr.astype(np.float64))
         if np.any(out == 0.0):
             raise InputError("numeric option_type must be +1 (call) or -1 (put)")
         return out
+    if arr.dtype.kind == "O":
+        # OptionType members (or mixed objects): str() of a str-mixin Enum is
+        # "OptionType.CALL" on 3.11+, so resolve each element through the enum.
+        try:
+            flat = [float(OptionType(x).omega) if not isinstance(x, str) else float(OptionType(x.lower()).omega)
+                    for x in arr.ravel()]
+        except ValueError as exc:
+            raise InputError("option_type entries must be 'call' or 'put'") from exc
+        return np.asarray(flat).reshape(arr.shape)
     lowered = np.char.lower(arr.astype(str))
     is_call = np.char.startswith(lowered, "c")
     is_put = np.char.startswith(lowered, "p")
@@ -209,8 +221,10 @@ def implied_vol_array(
         stalled = moved & (np.abs(sig_next - sig) <= tol * sig)
         sig = sig_next
         active &= ~(hit | stalled)
-    out = np.where(flat & ~bad, 0.0, sig)
-    return np.asarray(np.where(bad & ~((t <= 0.0) & flat), np.nan, out), dtype=np.float64)
+    # Zero time value means zero vol — including an expired quote at intrinsic.
+    zero = flat & (~bad | (t <= 0.0))
+    out = np.where(zero, 0.0, np.where(bad, np.nan, sig))
+    return np.asarray(out, dtype=np.float64)
 
 
 def chain(

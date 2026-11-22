@@ -108,3 +108,15 @@ def test_studio_rejects_non_finite_query_values(field, raw):
 
     with pytest.raises(InputError):
         vanilla_payload({field: raw})
+
+
+def test_expired_quote_at_intrinsic_has_zero_vol_not_the_seed():
+    out = implied_vol_array([10.0, 0.0], [110.0, 90.0], 100.0, 0.0, 0.0, 0.0, "call", errors="nan")
+    assert out.tolist() == [0.0, 0.0]
+
+
+def test_option_type_enum_members_broadcast():
+    got = price_array(100.0, [100.0, 100.0], 0.0, 0.0, 0.2, 1.0, [OptionType.CALL, OptionType.PUT])
+    np.testing.assert_allclose(got, [price(100, 100, 0, 0, 0.2, 1, "call"), price(100, 100, 0, 0, 0.2, 1, "put")])
+    with pytest.raises(InputError):
+        price_array(100.0, 100.0, 0.0, 0.0, 0.2, 1.0, np.array([None], dtype=object))

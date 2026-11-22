@@ -377,6 +377,9 @@ def models_payload(values: dict[str, Any]) -> dict[str, Any]:
     return {"spot": spot, "forward": fwd, "texp": texp, "strikes": strikes, "models": out}
 
 
+RISK_CELL_LIMIT = 2_000_000  # scenarios × positions per /api/risk call (bounded memory)
+
+
 def risk_payload(values: dict[str, Any]) -> dict[str, Any]:
     """Monte Carlo VaR / ES of the posted book (or the demo book)."""
     raw = values.get("positions")
@@ -384,6 +387,11 @@ def risk_payload(values: dict[str, Any]) -> dict[str, Any]:
     n = int(_f(values, "n", 20_000))
     if not 500 <= n <= 200_000:
         raise InputError("n must be between 500 and 200000 scenarios")
+    if n * len(book.positions) > RISK_CELL_LIMIT:
+        raise InputError(
+            f"{len(book.positions)} positions × {n} scenarios exceeds the Studio limit of "
+            f"{RISK_CELL_LIMIT:,} revaluations; lower the scenario count"
+        )
     report = monte_carlo_var(
         book,
         alpha=_f(values, "alpha", 0.99),

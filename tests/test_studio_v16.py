@@ -47,3 +47,9 @@ def test_lab_payload_carries_an_lsm_mark_close_to_the_tree():
     out = vanilla_payload({"type": "put", "style": "american"})
     assert abs(out["lsm"] - out["tree"]) < 4 * out["lsm_error"] + 0.05
     assert out["american"] < out["tree"] + 2e-3  # BS2002 is a lower bound now
+
+
+def test_risk_payload_caps_scenarios_times_positions():
+    rows = [{"spot": 100, "strike": 100 + i % 7, "vol": 0.2, "texp": 1} for i in range(50)]
+    with pytest.raises(InputError, match="exceeds the Studio limit"):
+        risk_payload({"positions": rows, "n": "100000"})
