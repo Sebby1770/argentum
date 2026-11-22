@@ -84,8 +84,8 @@ def heston_qe(
     dt = texp / n_steps
     kappa, theta, sigma, rho, v0 = params.kappa, params.theta, params.sigma, params.rho, params.v0
     rng = np.random.default_rng(seed)
-    x = np.full(n_paths, math.log(spot))
-    v = np.full(n_paths, v0)
+    x: np.ndarray = np.full(n_paths, math.log(spot))
+    v: np.ndarray = np.full(n_paths, v0)
     psi_c = 1.5
     for _ in range(n_steps):
         z1 = rng.standard_normal(n_paths)
