@@ -43,7 +43,7 @@ def test_greeks_array_matches_scalar_greeks():
     for s, k, r, q, v, t, typ in GRID[::7]:
         g = greeks(s, k, r, q, v, t, typ)
         a = greeks_array(s, k, r, q, v, t, typ)
-        for name in ("delta", "gamma", "vega", "theta", "rho", "vanna"):
+        for name in ("delta", "gamma", "vega", "theta", "rho", "vanna", "volga"):
             assert float(a[name]) == pytest.approx(getattr(g, name), rel=1e-9, abs=1e-12), name
 
 

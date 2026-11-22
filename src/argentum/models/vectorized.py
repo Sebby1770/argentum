@@ -93,7 +93,7 @@ def greeks_array(
     texp: ArrayLike,
     option_type: ArrayLike = "call",
 ) -> dict[str, np.ndarray]:
-    """Delta, gamma, vega, theta (per year), rho and vanna as broadcast arrays.
+    """Delta, gamma, vega, theta (per year), rho, vanna and volga as broadcast arrays.
 
     Conventions match :func:`argentum.models.black_scholes.greeks`. Where the
     total variance is zero the second-order greeks are reported as 0.
@@ -123,7 +123,16 @@ def greeks_array(
     )
     rho = w * k * t * df_r * nd2
     vanna = np.where(live, -df_q * pdf * np.where(live, d2, 0.0) / safe_v, 0.0)
-    return {"delta": delta, "gamma": gamma, "vega": vega, "theta": theta, "rho": rho, "vanna": vanna}
+    volga = np.where(live, vega * np.where(live, d1 * d2, 0.0) / safe_v, 0.0)
+    return {
+        "delta": delta,
+        "gamma": gamma,
+        "vega": vega,
+        "theta": theta,
+        "rho": rho,
+        "vanna": vanna,
+        "volga": volga,
+    }
 
 
 def implied_vol_array(
