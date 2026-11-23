@@ -34,6 +34,7 @@ from argentum.instruments.bond import Bond
 from argentum.instruments.swap import InterestRateSwap
 from argentum.book import Book, VanillaPosition
 from argentum.engines.fd import fd_price
+from argentum.engines.lsm import lsm_american
 from argentum.engines.montecarlo import gbm_european
 from argentum.instruments.cds import CreditDefaultSwap
 from argentum.models.barriers import barrier_price
@@ -41,6 +42,16 @@ from argentum.models.binomial import leisen_reimer_price
 from argentum.models.bjerksund_stensland import bjerksund_stensland
 from argentum.models.black_scholes import greeks, implied_vol, price
 from argentum.models.compound import forward_start, geske_compound
+from argentum.models.charfn import (
+    BatesCF,
+    BlackScholesCF,
+    HestonCF,
+    MertonJumpCF,
+    NIGCF,
+    VarianceGammaCF,
+    cos_price,
+    model_smile,
+)
 from argentum.models.heston import HestonParams, heston_price
 from argentum.models.lookback import floating_lookback
 from argentum.models.multiasset import kirk_spread, margrabe
@@ -48,6 +59,7 @@ from argentum.models.sabr import sabr_smile, sabr_surface
 from argentum.models.touch import no_touch, one_touch
 from argentum.models.variance import black_variance_strike, log_contract_fair_variance
 from argentum.portfolio import book_from_rows, portfolio_report
+from argentum.risk.portfolio import monte_carlo_var
 from argentum.termstructures.hazard import HazardCurve, bootstrap_hazard
 from argentum.termstructures.yield_curve import YieldCurve
 from argentum.time.date import Date
@@ -87,7 +99,13 @@ def _f(values: dict[str, Any], key: str, default: float) -> float:
         raw = raw[0] if raw else default
     if raw is None or raw == "":
         return float(default)
-    return float(raw)
+    try:
+        value = float(raw)
+    except (TypeError, ValueError) as exc:
+        raise InputError(f"{key} must be a number") from exc
+    if not math.isfinite(value):
+        raise InputError(f"{key} must be finite")
+    return value
 
 
 def _s(values: dict[str, Any], key: str, default: str) -> str:
@@ -121,6 +139,7 @@ def vanilla_payload(values: dict[str, Any]) -> dict[str, Any]:
     fd = fd_price(spot, strike, rate, div, vol, texp, opt, style, n_space=81, n_time=60)
     mc = gbm_european(spot, strike, rate, div, vol, texp, opt, n_paths=4000, sobol=False, antithetic=True)
     american = bjerksund_stensland(spot, strike, rate, div, vol, texp, opt)
+    lsm = lsm_american(spot, strike, rate, div, vol, texp, opt, n_paths=20_000, n_steps=50)
     ks = [strike * (0.6 + 0.04 * i) for i in range(21)]
     payoff = [max(k - strike, 0.0) if opt is OptionType.CALL else max(strike - k, 0.0) for k in ks]
     values_path = [price(k, strike, rate, div, vol, texp, opt) for k in ks]
@@ -131,6 +150,9 @@ def vanilla_payload(values: dict[str, Any]) -> dict[str, Any]:
         "mc": mc.npv,
         "mc_error": mc.std_error,
         "american": american,
+        "lsm": lsm.npv,
+        "lsm_error": lsm.std_error,
+        "lsm_european": lsm.european,
         "intrinsic": max(spot - strike, 0.0) if opt is OptionType.CALL else max(strike - spot, 0.0),
         "greeks": g.as_dict(),
         "spot": spot,
@@ -289,6 +311,107 @@ def credit_payload(values: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+MODEL_LABELS = {
+    "black_scholes": "Black–Scholes",
+    "merton": "Merton jumps",
+    "variance_gamma": "Variance Gamma",
+    "nig": "NIG",
+    "heston": "Heston",
+    "bates": "Bates",
+}
+
+
+def _models_from(values: dict[str, Any]) -> list[Any]:
+    heston = HestonCF(
+        kappa=_f(values, "heston_kappa", 2.0),
+        theta=_f(values, "heston_theta", 0.04),
+        sigma=_f(values, "heston_sigma", 0.5),
+        rho=_f(values, "heston_rho", -0.7),
+        v0=_f(values, "heston_v0", 0.04),
+    )
+    return [
+        BlackScholesCF(_f(values, "bs_vol", 0.2)),
+        MertonJumpCF(
+            _f(values, "merton_vol", 0.15),
+            _f(values, "merton_lam", 0.5),
+            _f(values, "merton_mu", -0.1),
+            _f(values, "merton_delta", 0.15),
+        ),
+        VarianceGammaCF(_f(values, "vg_sigma", 0.2), _f(values, "vg_nu", 0.25), _f(values, "vg_theta", -0.15)),
+        NIGCF(_f(values, "nig_alpha", 12.0), _f(values, "nig_beta", -4.0), _f(values, "nig_delta", 0.25)),
+        heston,
+        BatesCF(heston, _f(values, "bates_lam", 0.3), _f(values, "bates_mu", -0.12), _f(values, "bates_delta", 0.1)),
+    ]
+
+
+def models_payload(values: dict[str, Any]) -> dict[str, Any]:
+    """Six characteristic-function models on one strike strip, as prices and smiles."""
+    spot = _f(values, "spot", 100.0)
+    rate = _f(values, "rate", 0.03)
+    div = _f(values, "div", 0.0)
+    texp = _f(values, "texp", 0.5)
+    if not 0.0 < texp <= 30.0:
+        raise InputError("texp must be in (0, 30] years")
+    wanted = {name.strip() for name in _s(values, "models", ",".join(MODEL_LABELS)).split(",") if name.strip()}
+    strikes = [spot * (0.6 + 0.04 * i) for i in range(21)]
+    fwd = spot * math.exp((rate - div) * texp)
+    out = []
+    for model in _models_from(values):
+        if model.name not in wanted:
+            continue
+        smile = model_smile(model, spot, strikes, rate, div, texp)
+        atm = float(cos_price(model, spot, fwd, rate, div, texp, OptionType.CALL))
+        vols = [None if not math.isfinite(v) else float(v) for v in smile["implied_vol"]]
+        out.append(
+            {
+                "name": model.name,
+                "label": MODEL_LABELS[model.name],
+                "calls": [float(c) for c in smile["call"]],
+                "puts": [float(p) for p in smile["put"]],
+                "vols": vols,
+                "atm_forward_call": atm,
+            }
+        )
+    if not out:
+        raise InputError("choose at least one model")
+    return {"spot": spot, "forward": fwd, "texp": texp, "strikes": strikes, "models": out}
+
+
+RISK_CELL_LIMIT = 2_000_000  # scenarios × positions per /api/risk call (bounded memory)
+
+
+def risk_payload(values: dict[str, Any]) -> dict[str, Any]:
+    """Monte Carlo VaR / ES of the posted book (or the demo book)."""
+    raw = values.get("positions")
+    book = book_from_rows(raw) if isinstance(raw, list) and raw else _demo_book()
+    n = int(_f(values, "n", 20_000))
+    if not 500 <= n <= 200_000:
+        raise InputError("n must be between 500 and 200000 scenarios")
+    if n * len(book.positions) > RISK_CELL_LIMIT:
+        raise InputError(
+            f"{len(book.positions)} positions × {n} scenarios exceeds the Studio limit of "
+            f"{RISK_CELL_LIMIT:,} revaluations; lower the scenario count"
+        )
+    report = monte_carlo_var(
+        book,
+        alpha=_f(values, "alpha", 0.99),
+        horizon_days=_f(values, "horizon", 1.0),
+        n_scenarios=n,
+        correlation=_f(values, "correlation", 0.5),
+        vol_of_vol=_f(values, "vol_of_vol", 0.8),
+        seed=int(_f(values, "seed", 7)),
+    )
+    return report
+
+
+def _demo_book() -> Book:
+    book = Book()
+    book.add(VanillaPosition(1, 100, 100, 0.05, 0.0, 0.2, 1.0, OptionType.CALL, "atm"))
+    book.add(VanillaPosition(-1, 100, 110, 0.05, 0.0, 0.2, 1.0, OptionType.CALL, "call-spread"))
+    book.add(VanillaPosition(1, 100, 90, 0.05, 0.0, 0.2, 1.0, OptionType.PUT, "put"))
+    return book
+
+
 def book_payload(values: dict[str, Any]) -> dict[str, Any]:
     raw = values.get("positions")
     if isinstance(raw, str):
@@ -297,10 +420,7 @@ def book_payload(values: dict[str, Any]) -> dict[str, Any]:
         except json.JSONDecodeError as exc:
             raise InputError(f"invalid positions JSON: {exc.msg}") from exc
     if not isinstance(raw, list) or not raw:
-        book = Book()
-        book.add(VanillaPosition(1, 100, 100, 0.05, 0.0, 0.2, 1.0, OptionType.CALL, "atm"))
-        book.add(VanillaPosition(-1, 100, 110, 0.05, 0.0, 0.2, 1.0, OptionType.CALL, "call-spread"))
-        book.add(VanillaPosition(1, 100, 90, 0.05, 0.0, 0.2, 1.0, OptionType.PUT, "put"))
+        book = _demo_book()
     else:
         book = book_from_rows(raw)
     report = portfolio_report(book)
@@ -587,7 +707,7 @@ class StudioHandler(BaseHTTPRequestHandler):
         except ValueError:
             return False
         allowed = {str(host).lower().rstrip(".") for host in getattr(self.server, "trusted_hosts", ())}
-        return bool(hostname) and hostname.lower().rstrip(".") in allowed
+        return hostname is not None and bool(hostname) and hostname.lower().rstrip(".") in allowed
 
     def _has_csrf(self) -> bool:
         supplied = self.headers.get("X-Argentum-CSRF", "")
@@ -626,7 +746,13 @@ class StudioHandler(BaseHTTPRequestHandler):
         return True
 
     def _json(self, payload: Any, status: int = 200) -> None:
-        body = json.dumps(payload, default=str).encode("utf-8")
+        try:
+            body = json.dumps(payload, default=str, allow_nan=False).encode("utf-8")
+        except ValueError:
+            # A model produced NaN/inf from finite inputs: say so rather than emit
+            # invalid JSON (RFC 8259 has no NaN token, and res.json() would throw).
+            status = HTTPStatus.UNPROCESSABLE_ENTITY
+            body = json.dumps({"error": "result is not a finite number for these inputs"}).encode("utf-8")
         self.send_response(status)
         self._headers("application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
@@ -707,6 +833,10 @@ class StudioHandler(BaseHTTPRequestHandler):
                     self._json(credit_payload(qs))
                 elif path == "/api/book":
                     self._json(book_payload(qs))
+                elif path == "/api/models":
+                    self._json(models_payload(qs))
+                elif path == "/api/risk":
+                    self._json(risk_payload(qs))
                 elif path == "/api/quote":
                     self._json(quote_payload(qs))
                 elif path == "/api/feed":
@@ -743,6 +873,10 @@ class StudioHandler(BaseHTTPRequestHandler):
                 self._json(vanilla_payload(body))
             elif parsed.path == "/api/book":
                 self._json(book_payload(body))
+            elif parsed.path == "/api/models":
+                self._json(models_payload(body))
+            elif parsed.path == "/api/risk":
+                self._json(risk_payload(body))
             elif parsed.path == "/api/quote":
                 self._json(quote_payload(body))
             elif parsed.path == "/api/feed":
@@ -757,7 +891,7 @@ class StudioHandler(BaseHTTPRequestHandler):
                 self._json(ingest_payload(body))
             else:
                 self._json({"error": "not found"}, 404)
-        except (ArgentumError, MarketError, ValueError) as exc:
+        except (ArgentumError, MarketError, ValueError, ZeroDivisionError, OverflowError) as exc:
             self._json({"error": str(exc)}, 400)
 
     def do_OPTIONS(self) -> None:  # noqa: N802
@@ -794,6 +928,7 @@ class StudioHandler(BaseHTTPRequestHandler):
             "heston": "heston.html",
             "credit": "credit.html",
             "book": "book.html",
+            "models": "models.html",
             "surface": "surface.html",
             "connect": "index.html",
             "manifest.json": "manifest.json",

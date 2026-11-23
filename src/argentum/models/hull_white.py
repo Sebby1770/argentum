@@ -11,11 +11,10 @@ import math
 from collections.abc import Callable
 from dataclasses import dataclass
 
-import numpy as np
 
 from argentum.errors import InputError
 from argentum.math.special import norm_cdf
-from argentum.types import OptionType, require_positive
+from argentum.types import OptionType
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,7 +96,6 @@ def hw_trinomial_zerobond(
     # Build a short tree and take the discounted 1 at every terminal node.
     dt = texp / steps
     a, sigma = params.a, params.sigma
-    dx = sigma * math.sqrt(3.0 * dt)
     jmax = int(math.ceil(0.184 / (a * dt))) if a * dt > 0 else steps
     jmax = max(jmax, 1)
     # This is a simplified unit-notional discounting test using θ(t) drift.

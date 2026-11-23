@@ -22,7 +22,7 @@
         <label>Portfolio file
           <input id="portfolio-file" type="file" accept=".csv,.json,text/csv,application/json" />
         </label>
-        <p class="note" id="file-status">Required columns: spot, strike, vol, texp. Optional: tag, quantity, rate, div, type.</p>
+        <p class="note" id="file-status">Required columns: spot, strike, vol, texp. Optional: tag, quantity, rate, div, type, underlying.</p>
         <div class="cta-row compact">
           <button class="btn" type="submit">Run scenarios</button>
           <button class="btn ghost" id="export-report" type="button" disabled>Export JSON</button>
@@ -33,10 +33,32 @@
       <div>
         <div class="metrics" id="metrics"></div>
         <table class="data" id="table"></table>
+        <section class="risk" aria-labelledby="risk-title">
+          <h2 id="risk-title">Value at risk</h2>
+          <p class="note">Monte Carlo with full revaluation of every position under correlated spot and implied-vol shocks (leverage correlation −0.5, theta over the horizon). Positions are grouped by their <code>underlying</code> column, or by spot level when it is blank. The Greeks-only estimate is shown beside it so the non-linearity it misses is visible.</p>
+          <form class="risk-controls" id="risk-form">
+            <label>Confidence
+              <select name="alpha">
+                <option value="0.95">95%</option>
+                <option value="0.99" selected>99%</option>
+                <option value="0.995">99.5%</option>
+              </select>
+            </label>
+            <label>Horizon (days) <input name="horizon" type="number" min="1" max="250" step="1" value="1" /></label>
+            <label>Correlation <input name="correlation" type="number" min="-0.95" max="0.95" step="0.05" value="0.5" /></label>
+            <label>Scenarios <input name="n" type="number" min="500" max="200000" step="500" value="20000" /></label>
+            <button class="btn" type="submit">Run VaR</button>
+          </form>
+          <div class="metrics" id="risk-metrics"></div>
+          <canvas class="chart" id="risk-chart" width="900" height="280" aria-label="Distribution of simulated book P&amp;L with the VaR cut"></canvas>
+          <p class="note" id="risk-note"></p>
+          <p class="err" id="risk-err" role="alert"></p>
+        </section>
       </div>
     </main>
     <footer>Scenario PnL · normalized inputs · reproducible JSON · not a validated risk system</footer>
     <script src="/chrome.js"></script>
+    <script src="/charts.js"></script>
     <script src="/book.js"></script>
   </body>
 </html>

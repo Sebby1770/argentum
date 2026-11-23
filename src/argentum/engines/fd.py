@@ -49,11 +49,9 @@ def fd_price(
     if opt is OptionType.CALL:
         v = np.maximum(s - strike, 0.0)
         lower = lambda t, smin: 0.0
-        upper = lambda t, smax: smax * math.exp(-div * t) - strike * math.exp(-rate * t)
     else:
         v = np.maximum(strike - s, 0.0)
         lower = lambda t, smin: strike * math.exp(-rate * t) - smin * math.exp(-div * t)
-        upper = lambda t, smax: 0.0
 
     mu = rate - div - 0.5 * vol * vol
     sig2 = vol * vol

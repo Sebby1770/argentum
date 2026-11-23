@@ -120,7 +120,7 @@ browser access and additional Host names remain opt-in.
 1. **No silent NaNs.** Domain errors raise `InputError` / `CurveError` / `ConvergenceError`.
 2. **Evaluation date is an argument**, never a process-global.
 3. **Discounting and forecasting are separate curves.** Single-curve is `discount is forecast`.
-4. **Greeks are analytic where the model is analytic.** Vega is per 1.0 of volatility, not per vol-point. Theta is calendar-day (`/365`).
+4. **Greeks are analytic where the model is analytic.** Vega is per 1.0 of volatility, not per vol-point. Theta is per year (`-∂V/∂T`); `Greeks.theta_per_day` is the one-day decay (`/365`).
 5. **Day counts follow the 2006 ISDA Definitions.** Act/Act ICMA requires a reference period.
 6. **Implied vol is a round-trip.** `iv(price(σ)) = σ` to `1e-10` on a wide moneyness grid.
 
@@ -161,6 +161,51 @@ params = HestonParams(kappa=1.5, theta=0.04, sigma=0.4, rho=-0.5, v0=0.04)
 print(heston_price(100, 100, 0.01, 0.0, 1.0, params, OptionType.CALL))
 ```
 
+## Whole chains, jump models, American Monte Carlo, book VaR
+
+```python
+import numpy as np
+from argentum.models import chain, implied_vol_array, cos_price, model_smile
+from argentum.models import HestonCF, MertonJumpCF, VarianceGammaCF, NIGCF, BatesCF
+from argentum.engines import lsm_american
+from argentum.risk import monte_carlo_var, historical_var, pnl_explain
+
+# 1. A strike × expiry grid in one call; implied vols for 2,000 quotes at once.
+grid = chain(100.0, strikes=np.linspace(60, 140, 41), expiries=[0.25, 0.5, 1.0],
+             rate=0.03, div=0.01, vol=0.22)
+vols = implied_vol_array(grid["price"], 100.0, grid["strike"], 0.03, 0.01,
+                         grid["texp"], errors="nan")   # a stale quote -> NaN, not a crash
+
+# 2. One COS engine, six models, vectorised over strikes.
+heston = HestonCF(kappa=1.5768, theta=0.0398, sigma=0.5751, rho=-0.5711, v0=0.0175)
+cos_price(heston, 100, 100, 0.0, 0.0, 1.0)          # 5.785155434 (Fang–Oosterlee: 5.785155435)
+smile = model_smile(MertonJumpCF(0.15, 0.5, -0.1, 0.15), 100, [80, 100, 120], 0.03, 0.0, 0.5)
+
+# 3. Longstaff–Schwartz with an honest, out-of-sample (lower-bound) estimate.
+res = lsm_american(36, 40, 0.06, 0.0, 0.2, 1.0, "put")
+res.npv, res.std_error, res.in_sample, res.early_exercise_premium
+
+# 4. Full-revaluation VaR / ES, and P&L attribution between two marks.
+risk = monte_carlo_var(book, alpha=0.99, horizon_days=10)   # var, es, var_taylor, histogram
+```
+
+| Model | Characteristic function | Checked against |
+|-------|------------------------|-----------------|
+| Black–Scholes | GBM | the closed form, to 1e-11 |
+| Merton (1976) | log-normal jumps | the Poisson series of BS prices, to 1e-10 |
+| Variance Gamma | Madan–Carr–Chang | Fang–Oosterlee reference 19.099354724 |
+| NIG | Barndorff-Nielsen | seeded Monte Carlo, within 4 SE |
+| Heston (1993) | little-trap form | Fang–Oosterlee reference 5.785155435 |
+| Bates (1996) | Heston × Merton jumps | Heston when λ = 0; martingale + parity |
+
+Book risk groups positions into underlyings by the optional `underlying`
+column (or `symbol`); positions with no underlying are grouped by spot
+level. Tags stay strategy labels.
+
+Studio has a **Models** page (six smiles on one strip), a **VaR** panel on
+Portfolio (histogram with the VaR cut and the Greeks-only estimate beside
+it) and an LSM mark in the Lab.
+
 ## CLI
 
 ```text
@@ -181,14 +226,15 @@ src/argentum/
   time/             Date, Period, calendars, ISDA day counts, schedules
   math/             N(x), solvers, interpolation, Sobol, Thomas, quadrature
   termstructures/   yield curve, bootstrap, vol surface, hazard
-  models/           BSM, Black, Bachelier, SABR, SVI, Heston, HW, trees, exotics
-  engines/          finite difference, Monte Carlo
+  models/           BSM (+ vectorised chains), Black, Bachelier, SABR, SVI, COS engine
+                    (Heston, Bates, Merton, VG, NIG), HW, trees, BS 1993/2002, exotics
+  engines/          finite difference, Monte Carlo, Longstaff–Schwartz
   instruments/      bond, swap, option, cap/floor, swaption, CDS, FX
-  risk/             DV01, key-rate buckets, VaR
+  risk/             DV01, key-rate buckets, MC / historical VaR-ES, P&L explain
   calibration/      Levenberg–Marquardt for SABR / SVI / Heston
   feeds.py          demo, Stooq, vendor JSON, cache, circuit, ingest
   portfolio.py      validated CSV/JSON books and reproducible risk reports
-  studio.py         local desk (Front, lab, smile, book, watch, tape)
+  studio.py         local desk (Front, lab, smile, models, book + VaR, watch, tape)
   static/           packaged Studio HTML, CSS, JavaScript, and media
 ```
 

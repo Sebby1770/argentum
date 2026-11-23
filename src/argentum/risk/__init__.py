@@ -9,7 +9,6 @@ from dataclasses import dataclass
 import numpy as np
 
 from argentum.termstructures.yield_curve import YieldCurve
-from argentum.time.date import Date
 
 
 @dataclass(frozen=True, slots=True)
@@ -117,3 +116,17 @@ def parametric_var(
         "alpha": alpha,
         "n": float(x.size),
     }
+
+
+from argentum.risk.portfolio import historical_var, monte_carlo_var, pnl_explain  # noqa: E402
+
+__all__ = [
+    "BucketDelta",
+    "RiskReport",
+    "historical_var",
+    "key_rate_dv01",
+    "monte_carlo_var",
+    "parallel_dv01",
+    "parametric_var",
+    "pnl_explain",
+]

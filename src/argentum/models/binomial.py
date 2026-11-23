@@ -7,7 +7,6 @@ import math
 import numpy as np
 
 from argentum.errors import InputError
-from argentum.math.special import norm_cdf
 from argentum.types import ExerciseStyle, OptionType, require_non_negative, require_positive
 
 

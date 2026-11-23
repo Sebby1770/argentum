@@ -1,5 +1,44 @@
 # Changelog
 
+## 1.6.0 — 2026-11-22
+
+### Added
+- `argentum.models.charfn`: one COS (Fang–Oosterlee) engine for Black–Scholes,
+  Merton jumps, Variance Gamma, NIG, Heston and Bates, vectorised over strikes;
+  `model_smile` turns any of them into an implied-vol smile.
+- `argentum.models.vectorized`: `price_array`, `greeks_array`,
+  `implied_vol_array` (safeguarded Newton, `errors="nan"` for bad quotes) and
+  `chain` for whole strike × expiry grids.
+- `Greeks.theta_per_day`.
+- `engines.lsm`: Longstaff–Schwartz American Monte Carlo (Laguerre basis on
+  in-the-money paths) reporting the out-of-sample lower bound with its
+  standard error, the in-sample estimate and the early-exercise premium;
+  `lsm_price` accepts any simulated paths.
+- `risk.portfolio`: `monte_carlo_var` (full revaluation under correlated spot
+  and implied-vol shocks, with the second-order Greeks estimate alongside),
+  `historical_var` and `pnl_explain`.
+- `VanillaPosition.underlying` and an `underlying` / `symbol` portfolio column.
+- Bjerksund–Stensland 2002 two-step boundary (`version=2002`, default) next to
+  the 1993 flat one.
+- Studio: Models page, Portfolio VaR panel, LSM mark in the Lab,
+  `/api/models` and `/api/risk`.
+- CI gates: ruff (bug rules), mypy, coverage floor.
+
+### Fixed
+- Bjerksund–Stensland priced American options wrongly: three formula errors
+  (φ exponent, κ, trigger carry) put an ATM American put at 6.5535 against a
+  tree value of 6.0906. It now reproduces Haug's worked example (5.2704) and
+  stays a lower bound within 1.5% of a 2001-step tree.
+- `heston_price` was 4.5e-5 off Fang–Oosterlee's reference 5.785155435; it now
+  uses the shared engine and matches to nine digits.
+- `require_positive` / `require_non_negative` let NaN and infinity through, so
+  Studio answered `{"npv": NaN}` (invalid JSON). Inputs are now rejected with a
+  400 and the server never emits NaN tokens.
+- Theta was documented as per calendar day but is per year; docs corrected and
+  the Lab shows theta per day.
+- `price()` claimed NumPy array support but rejected arrays; it now broadcasts.
+- 11 mypy errors and dead code found by lint.
+
 ## 1.5.0 — 2026-08-24
 
 - Added validated CSV/JSON portfolio loading and deterministic text, JSON, and

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field, replace
 from enum import Enum
 from typing import Any, Mapping
@@ -87,8 +88,9 @@ class PayoffType(str, Enum):
 class Greeks:
     """First- and second-order sensitivities.
 
-    Vega is per 1.0 of volatility (not per vol-point). Theta is calendar-day
-    (price change for +1 day, year-fraction 1/365). Rho is per 1.0 of rate.
+    Vega is per 1.0 of volatility (not per vol-point). Theta is ``-dV/dT`` per
+    *year* of calendar time; :attr:`theta_per_day` divides by 365 for the
+    one-day decay a desk quotes. Rho is per 1.0 of rate.
     """
 
     delta: float = 0.0
@@ -112,6 +114,11 @@ class Greeks:
 
     def _field_names(self) -> tuple[str, ...]:
         return tuple(self.__dataclass_fields__)
+
+    @property
+    def theta_per_day(self) -> float:
+        """Calendar-day theta: the value change over one day, theta / 365."""
+        return self.theta / 365.0
 
     def scale(self, notional: float) -> "Greeks":
         return Greeks(**{k: getattr(self, k) * notional for k in self._field_names()})
@@ -147,19 +154,24 @@ class PriceResult:
 
 
 def require_positive(name: str, value: float) -> float:
+    value = require_finite(name, value)
     if not (value > 0.0):
         raise InputError(f"{name} must be positive, got {value!r}")
-    return float(value)
+    return value
 
 
 def require_non_negative(name: str, value: float) -> float:
+    value = require_finite(name, value)
     if value < 0.0:
         raise InputError(f"{name} must be >= 0, got {value!r}")
-    return float(value)
+    return value
 
 
 def require_finite(name: str, value: float) -> float:
-    value = float(value)
-    if value != value or value in (float("inf"), float("-inf")):
+    try:
+        value = float(value)
+    except (TypeError, ValueError) as exc:
+        raise InputError(f"{name} must be a real number, got {value!r}") from exc
+    if not math.isfinite(value):
         raise InputError(f"{name} must be finite, got {value!r}")
     return value

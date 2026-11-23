@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import math
 
-from argentum.errors import InputError
 from argentum.math.special import norm_cdf
 from argentum.types import require_non_negative, require_positive
 
