@@ -71,8 +71,9 @@ def test_studio_vanilla_atm():
 def test_studio_smile_and_bond():
     smile = smile_payload({"forward": 0.03, "texp": 5, "alpha": 0.04, "beta": 0.5, "rho": -0.3, "nu": 0.5})
     assert len(smile["grid"]) == 25
-    bond = bond_payload({"coupon": 0.05, "ytm": 0.05, "years": 10, "freq": 2})
+    bond = bond_payload({"coupon": 0.05, "ytm": 0.05, "years": 10, "freq": 2, "as_of": "2025-01-15"})
     assert 90 < bond["dirty"] < 110
+    assert bond["as_of"] == "2025-01-15"
 
 
 def test_health_and_extras():

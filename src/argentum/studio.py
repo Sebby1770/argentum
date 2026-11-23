@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 import argparse
+import hmac
 import json
 import math
 import mimetypes
+import os
+import secrets
+import stat
 import threading
 import time
 from collections import deque
@@ -16,7 +20,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from argentum import __version__
-from argentum.errors import ArgentumError, MarketError
+from argentum.errors import ArgentumError, InputError, MarketError
 from argentum.feeds import (
     PRESETS,
     Quote,
@@ -43,17 +47,33 @@ from argentum.models.multiasset import kirk_spread, margrabe
 from argentum.models.sabr import sabr_smile, sabr_surface
 from argentum.models.touch import no_touch, one_touch
 from argentum.models.variance import black_variance_strike, log_contract_fair_variance
-from argentum.scenario import default_shocks, scenario_table
+from argentum.portfolio import book_from_rows, portfolio_report
 from argentum.termstructures.hazard import HazardCurve, bootstrap_hazard
 from argentum.termstructures.yield_curve import YieldCurve
 from argentum.time.date import Date
 from argentum.types import ExerciseStyle, Frequency, OptionType
 
-ROOT = Path(__file__).resolve().parents[2]
-STATIC = ROOT / "web" / "static"
-FEED_FILE = ROOT / "data" / "feed.json"
+STATIC = Path(__file__).resolve().parent / "static"
+
+
+def _config_dir() -> Path:
+    """Return a user-owned config directory without touching the install tree."""
+    override = os.environ.get("ARGENTUM_CONFIG_DIR")
+    if override:
+        return Path(override).expanduser()
+    if os.name == "nt":
+        base = os.environ.get("APPDATA")
+        return Path(base).expanduser() / "Argentum" if base else Path.home() / "AppData" / "Roaming" / "Argentum"
+    if __import__("sys").platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "Argentum"
+    base = os.environ.get("XDG_CONFIG_HOME")
+    return (Path(base).expanduser() if base else Path.home() / ".config") / "argentum"
+
+
+FEED_FILE = _config_dir() / "feed.json"
 RATE_LIMIT = 120
 RATE_WINDOW = 60.0
+_CSRF_TOKEN = secrets.token_urlsafe(32)
 _started = time.monotonic()
 _rate_lock = threading.Lock()
 _rate_buckets: dict[str, list[float]] = {}
@@ -75,6 +95,15 @@ def _s(values: dict[str, Any], key: str, default: str) -> str:
     if isinstance(raw, list):
         raw = raw[0] if raw else default
     return str(raw if raw is not None else default)
+
+
+def _date_value(values: dict[str, Any], key: str, default: Date) -> Date:
+    raw = _s(values, key, str(default)).strip()
+    try:
+        year, month, day = (int(part) for part in raw.split("-"))
+        return Date(year, month, day)
+    except (TypeError, ValueError) as exc:
+        raise InputError(f"{key} must be an ISO date (YYYY-MM-DD)") from exc
 
 
 def vanilla_payload(values: dict[str, Any]) -> dict[str, Any]:
@@ -131,7 +160,7 @@ def bond_payload(values: dict[str, Any]) -> dict[str, Any]:
     years = int(_f(values, "years", 10))
     freq_n = int(_f(values, "freq", 2))
     face = _f(values, "face", 100.0)
-    as_of = Date(2026, 8, 15)
+    as_of = _date_value(values, "as_of", Date(2026, 8, 15))
     mat = as_of.add_years(years)
     freq = {1: Frequency.ANNUAL, 2: Frequency.SEMIANNUAL, 4: Frequency.QUARTERLY}.get(freq_n, Frequency.SEMIANNUAL)
     bond = Bond.fixed(coupon, mat, issue=as_of, frequency=freq, face=face)
@@ -149,7 +178,7 @@ def bond_payload(values: dict[str, Any]) -> dict[str, Any]:
 
 
 def swap_payload(values: dict[str, Any]) -> dict[str, Any]:
-    as_of = Date(2026, 8, 24)
+    as_of = _date_value(values, "as_of", Date(2026, 8, 24))
     tenor = _s(values, "tenor", "5Y")
     fixed = _f(values, "rate", 0.04)
     curve_rate = _f(values, "curve", 0.04)
@@ -163,6 +192,7 @@ def swap_payload(values: dict[str, Any]) -> dict[str, Any]:
         "annuity": swap.annuity(curve),
         "tenor": tenor,
         "notional": notional,
+        "as_of": str(as_of),
     }
 
 
@@ -233,7 +263,7 @@ def surface_payload(values: dict[str, Any]) -> dict[str, Any]:
 
 
 def credit_payload(values: dict[str, Any]) -> dict[str, Any]:
-    as_of = Date(2026, 8, 24)
+    as_of = _date_value(values, "as_of", Date(2026, 8, 24))
     hazard_rate = _f(values, "hazard", 0.012)
     recovery = _f(values, "recovery", 0.4)
     coupon = _f(values, "coupon", 0.01)
@@ -255,46 +285,31 @@ def credit_payload(values: dict[str, Any]) -> dict[str, Any]:
         "boot_hazards": [{"t": float(t), "h": float(h)} for t, h in zip(boot.times, boot.hazards)],
         "recovery": recovery,
         "hazard": hazard_rate,
+        "as_of": str(as_of),
     }
 
 
 def book_payload(values: dict[str, Any]) -> dict[str, Any]:
     raw = values.get("positions")
-    book = Book()
     if isinstance(raw, str):
         try:
             raw = json.loads(raw)
-        except json.JSONDecodeError:
-            raw = None
+        except json.JSONDecodeError as exc:
+            raise InputError(f"invalid positions JSON: {exc.msg}") from exc
     if not isinstance(raw, list) or not raw:
+        book = Book()
         book.add(VanillaPosition(1, 100, 100, 0.05, 0.0, 0.2, 1.0, OptionType.CALL, "atm"))
         book.add(VanillaPosition(-1, 100, 110, 0.05, 0.0, 0.2, 1.0, OptionType.CALL, "call-spread"))
         book.add(VanillaPosition(1, 100, 90, 0.05, 0.0, 0.2, 1.0, OptionType.PUT, "put"))
     else:
-        for row in raw:
-            if not isinstance(row, dict):
-                continue
-            kind = OptionType.PUT if str(row.get("type", "call")).lower().startswith("p") else OptionType.CALL
-            book.add(
-                VanillaPosition(
-                    quantity=_f(row, "qty", 1.0),
-                    spot=_f(row, "spot", 100.0),
-                    strike=_f(row, "strike", 100.0),
-                    rate=_f(row, "rate", 0.05),
-                    div=_f(row, "div", 0.0),
-                    vol=_f(row, "vol", 0.2),
-                    texp=_f(row, "texp", 1.0),
-                    option_type=kind,
-                    tag=_s(row, "tag", ""),
-                )
-            )
-    marked = book.price()
-    shocks = default_shocks()
+        book = book_from_rows(raw)
+    report = portfolio_report(book)
     return {
-        "npv": marked.npv,
-        "greeks": marked.greeks.as_dict() if marked.greeks else {},
-        "n": len(book.positions),
-        "scenarios": scenario_table(book, shocks),
+        "npv": report["summary"]["npv"],
+        "greeks": report["summary"]["greeks"],
+        "n": report["positions"],
+        "scenarios": report["scenarios"],
+        "report": report,
     }
 
 
@@ -356,8 +371,32 @@ def save_feed_config(values: dict[str, Any]) -> dict[str, Any]:
     if cfg["source"] not in {"http", "custom", "own"}:
         cfg["header_name"] = ""
         cfg["header_value"] = ""
-    FEED_FILE.parent.mkdir(parents=True, exist_ok=True)
-    FEED_FILE.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+    FEED_FILE.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    try:
+        FEED_FILE.parent.chmod(0o700)
+    except OSError:
+        pass
+    # Write beside the destination, fsync, then atomically replace it.  The
+    # temporary mode prevents another local user reading a half-written token.
+    tmp = FEED_FILE.with_name(f".{FEED_FILE.name}.{secrets.token_hex(8)}.tmp")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    fd = os.open(tmp, flags, stat.S_IRUSR | stat.S_IWUSR)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(cfg, handle, indent=2)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp, FEED_FILE)
+        try:
+            FEED_FILE.chmod(0o600)
+        except OSError:
+            pass
+    finally:
+        if tmp.exists():
+            tmp.unlink()
     return public_feed_config(cfg)
 
 
@@ -487,6 +526,15 @@ def _rate_limited(ip: str) -> bool:
 class StudioHandler(BaseHTTPRequestHandler):
     server_version = f"ArgentumStudio/{__version__}"
 
+    _CSRF_PATHS = {
+        "/api/feed",
+        "/api/ingest",
+        "/api/mark",
+        "/api/probe",
+        "/api/quote",
+        "/api/watch",
+    }
+
     def log_message(self, fmt: str, *args: Any) -> None:
         sys_stderr = __import__("sys").stderr
         sys_stderr.write("[studio] %s - %s\n" % (self.address_string(), fmt % args))
@@ -494,12 +542,88 @@ class StudioHandler(BaseHTTPRequestHandler):
     def _headers(self, content_type: str, extra: dict[str, str] | None = None) -> None:
         self.send_header("Content-Type", content_type)
         self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("Referrer-Policy", "same-origin")
         self.send_header("Cache-Control", "no-store")
-        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Cross-Origin-Resource-Policy", "same-origin")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header(
+            "Content-Security-Policy",
+            "default-src 'self'; base-uri 'none'; connect-src 'self'; font-src 'self'; "
+            "form-action 'self'; frame-ancestors 'none'; img-src 'self' data:; object-src 'none'; "
+            "script-src 'self'; style-src 'self' 'unsafe-inline'; worker-src 'self'",
+        )
+        self.send_header("Permissions-Policy", "camera=(), geolocation=(), microphone=(), payment=()")
+        origin = self.headers.get("Origin", "")
+        allowed = set(getattr(self.server, "allowed_origins", ()))
+        if origin and origin in allowed:
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
         if extra:
             for k, v in extra.items():
                 self.send_header(k, v)
+
+    def _csrf_token(self) -> str:
+        return str(getattr(self.server, "csrf_token", _CSRF_TOKEN))
+
+    def _request_is_trusted(self) -> bool:
+        """Reject cross-site browser traffic unless its exact origin was opted in."""
+        origin = self.headers.get("Origin", "")
+        fetch_site = self.headers.get("Sec-Fetch-Site", "").lower()
+        if fetch_site == "cross-site":
+            return origin in set(getattr(self.server, "allowed_origins", ()))
+        if not origin:
+            return True  # curl, a matching engine, and same-origin navigation
+        parsed = urlparse(origin)
+        host = self.headers.get("Host", "")
+        same_origin = parsed.scheme in {"http", "https"} and parsed.netloc == host
+        return same_origin or origin in set(getattr(self.server, "allowed_origins", ()))
+
+    def _host_is_trusted(self) -> bool:
+        raw = self.headers.get("Host", "")
+        if not raw:
+            return False
+        try:
+            hostname = urlparse(f"//{raw}").hostname
+        except ValueError:
+            return False
+        allowed = {str(host).lower().rstrip(".") for host in getattr(self.server, "trusted_hosts", ())}
+        return bool(hostname) and hostname.lower().rstrip(".") in allowed
+
+    def _has_csrf(self) -> bool:
+        supplied = self.headers.get("X-Argentum-CSRF", "")
+        return bool(supplied) and hmac.compare_digest(supplied, self._csrf_token())
+
+    def _browser_request(self) -> bool:
+        return bool(self.headers.get("Origin") or self.headers.get("Sec-Fetch-Site"))
+
+    def _authorize_api(self, path: str, *, state_change: bool = False) -> bool:
+        if not self._host_is_trusted():
+            self._json({"error": "unrecognised Host header"}, HTTPStatus.MISDIRECTED_REQUEST)
+            return False
+        if not self._request_is_trusted():
+            self._json({"error": "cross-origin request denied"}, HTTPStatus.FORBIDDEN)
+            return False
+        ingest_authorized = False
+        if path == "/api/ingest":
+            expected = str(getattr(self.server, "ingest_token", "") or "")
+            supplied = self.headers.get("X-Argentum-Ingest-Token", "")
+            if expected and not (supplied and hmac.compare_digest(supplied, expected)):
+                self._json({"error": "invalid ingest token"}, HTTPStatus.FORBIDDEN)
+                return False
+            if not expected and not bool(getattr(self.server, "allow_unauthenticated_ingest", False)):
+                self._json(
+                    {"error": "push ingest is disabled; configure an ingest token to enable it"},
+                    HTTPStatus.FORBIDDEN,
+                )
+                return False
+            ingest_authorized = bool(expected)
+        needs_csrf = path in self._CSRF_PATHS and (state_change or self._browser_request())
+        if path == "/api/ingest" and not self._browser_request():
+            needs_csrf = False
+        if needs_csrf and not ingest_authorized and not self._has_csrf():
+            self._json({"error": "missing or invalid session token"}, HTTPStatus.FORBIDDEN)
+            return False
+        return True
 
     def _json(self, payload: Any, status: int = 200) -> None:
         body = json.dumps(payload, default=str).encode("utf-8")
@@ -518,19 +642,42 @@ class StudioHandler(BaseHTTPRequestHandler):
 
     def _read_json(self) -> dict[str, Any]:
         length = int(self.headers.get("Content-Length", "0") or 0)
-        if length <= 0:
-            return {}
-        raw = self.rfile.read(min(length, 1_000_000))
+        raw = self.rfile.read(length)
         try:
             payload = json.loads(raw.decode("utf-8"))
-        except json.JSONDecodeError as exc:
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise ArgentumError(str(exc)) from exc
-        return payload if isinstance(payload, dict) else {}
+        if not isinstance(payload, dict):
+            raise InputError("request JSON must be an object")
+        return payload
+
+    def _valid_json_body(self) -> bool:
+        content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+        if content_type != "application/json":
+            self._json({"error": "Content-Type must be application/json"}, HTTPStatus.UNSUPPORTED_MEDIA_TYPE)
+            return False
+        try:
+            length = int(self.headers.get("Content-Length", "0") or 0)
+        except ValueError:
+            self._json({"error": "invalid Content-Length"}, HTTPStatus.BAD_REQUEST)
+            return False
+        if length <= 0:
+            self._json({"error": "JSON request body required"}, HTTPStatus.BAD_REQUEST)
+            return False
+        if length > 1_000_000:
+            self._json({"error": "request body exceeds 1 MB"}, HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
+            return False
+        return True
 
     def do_GET(self) -> None:  # noqa: N802
+        if not self._host_is_trusted():
+            self._json({"error": "unrecognised Host header"}, HTTPStatus.MISDIRECTED_REQUEST)
+            return
         parsed = urlparse(self.path)
         path = parsed.path
         if path.startswith("/api/"):
+            if not self._authorize_api(path):
+                return
             if _rate_limited(self.client_address[0]):
                 self._json({"error": "rate limited"}, HTTPStatus.TOO_MANY_REQUESTS)
                 return
@@ -538,6 +685,8 @@ class StudioHandler(BaseHTTPRequestHandler):
             try:
                 if path == "/api/health":
                     self._json(health_payload())
+                elif path == "/api/session":
+                    self._json({"ok": True, "csrf": self._csrf_token()})
                 elif path == "/api/vanilla":
                     self._json(vanilla_payload(qs))
                 elif path == "/api/smile":
@@ -581,6 +730,10 @@ class StudioHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
+        if not self._authorize_api(parsed.path, state_change=parsed.path in self._CSRF_PATHS):
+            return
+        if not self._valid_json_body():
+            return
         if _rate_limited(self.client_address[0]):
             self._json({"error": "rate limited"}, HTTPStatus.TOO_MANY_REQUESTS)
             return
@@ -608,10 +761,23 @@ class StudioHandler(BaseHTTPRequestHandler):
             self._json({"error": str(exc)}, 400)
 
     def do_OPTIONS(self) -> None:  # noqa: N802
+        if not self._host_is_trusted():
+            self._json({"error": "unrecognised Host header"}, HTTPStatus.MISDIRECTED_REQUEST)
+            return
+        if not self._request_is_trusted():
+            self._json({"error": "cross-origin request denied"}, HTTPStatus.FORBIDDEN)
+            return
+        origin = self.headers.get("Origin", "")
+        allowed = set(getattr(self.server, "allowed_origins", ()))
         self.send_response(204)
-        self.send_header("Access-Control-Allow-Origin", "*")
+        if origin and origin in allowed:
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        self.send_header(
+            "Access-Control-Allow-Headers",
+            "Content-Type, Authorization, X-Argentum-CSRF, X-Argentum-Ingest-Token",
+        )
         self.send_header("Access-Control-Max-Age", "600")
         self.end_headers()
 
@@ -641,7 +807,11 @@ class StudioHandler(BaseHTTPRequestHandler):
             self._bytes(b"forbidden", "text/plain", 403)
             return
         if not target.is_file():
-            self._bytes(b"not found", "text/plain", 404)
+            not_found = STATIC / "404.html"
+            if not_found.is_file():
+                self._bytes(not_found.read_bytes(), "text/html; charset=utf-8", 404)
+            else:
+                self._bytes(b"not found", "text/plain", 404)
             return
         ctype = mimetypes.guess_type(str(target))[0] or "application/octet-stream"
         if target.suffix == ".svg":
@@ -652,8 +822,25 @@ class StudioHandler(BaseHTTPRequestHandler):
         self.do_GET()
 
 
-def serve(host: str = "127.0.0.1", port: int = 8787) -> None:
+def serve(
+    host: str = "127.0.0.1",
+    port: int = 8787,
+    *,
+    allowed_origins: tuple[str, ...] = (),
+    ingest_token: str | None = None,
+    trusted_hosts: tuple[str, ...] = (),
+    allow_unauthenticated_ingest: bool = False,
+) -> None:
     httpd = ThreadingHTTPServer((host, port), StudioHandler)
+    httpd.allowed_origins = tuple(allowed_origins)  # type: ignore[attr-defined]
+    httpd.ingest_token = ingest_token or os.environ.get("ARGENTUM_INGEST_TOKEN", "")  # type: ignore[attr-defined]
+    loopback = {"127.0.0.1", "localhost", "::1"}
+    configured = set(trusted_hosts)
+    if host not in {"0.0.0.0", "::"}:
+        configured.add(host)
+    httpd.trusted_hosts = tuple(sorted(loopback | configured))  # type: ignore[attr-defined]
+    httpd.allow_unauthenticated_ingest = allow_unauthenticated_ingest  # type: ignore[attr-defined]
+    httpd.csrf_token = secrets.token_urlsafe(32)  # type: ignore[attr-defined]
     print(f"Argentum Studio {__version__}  http://{host}:{port}")
     try:
         httpd.serve_forever()
@@ -667,8 +854,19 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Argentum Studio")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8787)
+    parser.add_argument("--allow-origin", action="append", default=[], help="exact browser origin to allow (repeatable)")
+    parser.add_argument("--ingest-token", default=None, help="token required in X-Argentum-Ingest-Token")
+    parser.add_argument("--trusted-host", action="append", default=[], help="additional accepted Host name (repeatable)")
+    parser.add_argument("--allow-unauthenticated-ingest", action="store_true", help="allow tokenless loopback push ingest")
     args = parser.parse_args()
-    serve(args.host, args.port)
+    serve(
+        args.host,
+        args.port,
+        allowed_origins=tuple(args.allow_origin),
+        ingest_token=args.ingest_token,
+        trusted_hosts=tuple(args.trusted_host),
+        allow_unauthenticated_ingest=args.allow_unauthenticated_ingest,
+    )
 
 
 if __name__ == "__main__":
