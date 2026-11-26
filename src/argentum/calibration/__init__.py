@@ -23,8 +23,14 @@ def levenberg_marquardt(
     xtol: float = 1e-10,
     gtol: float = 1e-10,
     lambda0: float = 1e-3,
+    strict: bool = True,
 ) -> np.ndarray:
-    """Finite-difference LM. Raise rather than return an unconverged iterate."""
+    """Finite-difference LM. Raise rather than return an unconverged iterate.
+
+    With ``strict=False`` the best iterate found so far is returned when the
+    iteration budget runs out or no descent step exists — for calibrations
+    that report their own fit quality.
+    """
     if maxiter <= 0:
         raise ValueError("maxiter must be positive")
     x = np.array(x0, dtype=float)
@@ -85,6 +91,8 @@ def levenberg_marquardt(
                 break
             lam = min(lam * 3.0, 1e8)
         if not stepped:
+            if not strict:
+                return x
             raise ConvergenceError(
                 "Levenberg–Marquardt could not find a descent step",
                 iterations=iteration,
@@ -96,6 +104,8 @@ def levenberg_marquardt(
             return x
         if previous_cost - cost <= ftol * max(1.0, previous_cost):
             return x
+    if not strict:
+        return x
     raise ConvergenceError(
         "Levenberg–Marquardt reached maxiter without convergence",
         iterations=maxiter,
