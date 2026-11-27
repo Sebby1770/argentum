@@ -87,6 +87,7 @@ def test_chain_from_rows_accepts_prices_mids_ivs_and_days_and_reports_drops():
     assert chain.price[chain.strike == 110][0] == pytest.approx(price(100, 110, 0.02, 0.0, 0.22, 0.5, "call"))
     reasons = " ".join(d["reason"] for d in chain.dropped)
     assert len(chain.dropped) == 3 and "bounds" in reasons and "strike" in reasons and "straddle" in reasons
+    assert sorted(d["row"] for d in chain.dropped) == [4, 5, 6]
     with pytest.raises(InputError):
         chain_from_rows([], spot=100.0)
 
@@ -165,3 +166,33 @@ def test_levenberg_marquardt_non_strict_returns_best_iterate():
         levenberg_marquardt(residual, np.array([0.0, 0.0]), maxiter=1, ftol=0.0, xtol=0.0)
     x = levenberg_marquardt(residual, np.array([0.0, 0.0]), maxiter=1, ftol=0.0, xtol=0.0, strict=False)
     assert np.all(np.isfinite(x))
+
+
+def test_load_chain_reads_csv_with_bom_and_json(tmp_path):
+    from argentum.chain import load_chain
+
+    csv_path = tmp_path / "chain.csv"
+    csv_path.write_text("﻿Texp,Strike,Type,IV\n0.5,90,put,0.24\n0.5,100,call,0.2\n0.5,110,call,0.19\n", encoding="utf-8")
+    chain = load_chain(csv_path, spot=100.0)
+    assert chain.size == 3 and chain.iv.tolist() == [0.24, 0.2, 0.19]
+    json_path = tmp_path / "chain.json"
+    json_path.write_text('{"rows": [{"texp": 1, "strike": 100, "type": "call", "iv": 0.3}]}', encoding="utf-8")
+    assert load_chain(json_path, spot=100.0).size == 1
+    with pytest.raises(InputError):
+        load_chain(tmp_path / "chain.txt", spot=100.0)
+
+
+def test_chain_cli_text_json_and_errors(capsys):
+    from argentum.cli import main
+
+    args = ["chain", "examples/sample_chain.csv", "--spot", "100", "--rate", "0.03", "--div", "0.01", "--models", "bates"]
+    assert main(args) == 0
+    out = capsys.readouterr().out
+    assert "arbitrage  none" in out and "arbitrage-free" in out and "bates" in out
+    assert main([*args, "--json"]) == 0
+    import json
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["fits"][0]["family"] == "bates" and payload["n_quotes"] == 75
+    assert main(["chain", "missing.csv", "--spot", "100"]) == 1
+    assert main(["chain", "examples/sample_chain.csv", "--spot", "100", "--models", "sabr"]) == 1

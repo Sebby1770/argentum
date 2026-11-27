@@ -103,6 +103,14 @@ def build_parser() -> argparse.ArgumentParser:
     portfolio.add_argument("path", help="UTF-8 .csv or .json portfolio")
     portfolio.add_argument("--format", choices=("text", "json", "csv"), default="text")
     portfolio.add_argument("--output", default="-", help="report path, or - for stdout")
+
+    chain = sub.add_parser("chain", help="Scan an option chain for arbitrage, fit SSVI and models")
+    chain.add_argument("path", help="UTF-8 .csv or .json chain (texp|days, strike, type, price|mid|bid+ask|iv)")
+    chain.add_argument("--spot", type=float, required=True)
+    chain.add_argument("--rate", type=float, default=0.0)
+    chain.add_argument("--div", type=float, default=0.0)
+    chain.add_argument("--models", default="heston,bates", help="comma list: black_scholes,merton,variance_gamma,nig,heston,bates")
+    chain.add_argument("--json", action="store_true")
     return p
 
 
@@ -218,6 +226,48 @@ def main(argv: list[str] | None = None) -> int:
             sys.stdout.write(rendered)
         else:
             Path(args.output).write_text(rendered, encoding="utf-8")
+        return 0
+    if args.cmd == "chain":
+        from argentum.calibration.cos import calibrate_model
+        from argentum.chain import check_arbitrage, load_chain
+        from argentum.errors import ArgentumError
+        from argentum.models.ssvi import fit_ssvi
+
+        try:
+            chain = load_chain(args.path, spot=args.spot, rate=args.rate, div=args.div)
+            families = [m.strip() for m in args.models.split(",") if m.strip()]
+            arb = check_arbitrage(chain)
+            ssvi = fit_ssvi(chain.log_moneyness, chain.texp, chain.iv)
+            fits = sorted((calibrate_model(chain, fam) for fam in families), key=lambda f: f.rmse_vol)
+        except (ArgentumError, OSError, ValueError) as exc:
+            print(f"argentum chain: {exc}", file=sys.stderr)
+            return 1
+        if args.json:
+            out = {
+                "n_quotes": chain.size,
+                "dropped": list(chain.dropped),
+                "arbitrage": arb,
+                "ssvi": {**ssvi.as_dict(), "certificate": ssvi.no_arbitrage()},
+                "fits": [f.as_dict() for f in fits],
+            }
+            print(json.dumps(out, indent=2))
+            return 0
+        cert = ssvi.no_arbitrage()
+        print(f"quotes     {chain.size} across {chain.expiries.size} expiries ({len(chain.dropped)} dropped)")
+        verdict = "none" if arb["arbitrage_free"] else ", ".join(f"{k} {v}" for k, v in arb["counts"].items() if v)
+        print(f"arbitrage  {verdict}")
+        print(
+            f"SSVI       rho {ssvi.rho:+.4f}  eta {ssvi.eta:.4f}  gamma {ssvi.gamma:.4f}  "
+            f"RMSE {ssvi.meta['rmse_vol'] * 100:.3f} vp  "
+            f"{'arbitrage-free' if cert['arbitrage_free'] and cert['butterfly_condition'] else 'CHECK CERTIFICATE'}"
+        )
+        for fit in fits:
+            param_text = "  ".join(f"{k} {v:.4g}" for k, v in fit.params.items())
+            extra = f"  ({fit.n_below_precision} below precision)" if fit.n_below_precision else ""
+            print(
+                f"{fit.family:15s} RMSE {fit.rmse_vol * 100:6.3f} vp  "
+                f"worst {fit.max_abs_vol_error * 100:6.3f} vp  {param_text}{extra}"
+            )
         return 0
     return 2
 

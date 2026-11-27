@@ -1,5 +1,32 @@
 # Changelog
 
+## 1.7.0 — 2026-11-27
+
+From quoted prices to an arbitrage-free surface.
+
+### Added
+- `models.ssvi`: Gatheral–Jacquier SSVI surfaces with power-law curvature.
+  `fit_ssvi` fits (ρ, η, γ) and the ATM total variances jointly, keeps θ_t
+  non-decreasing by construction and imposes η(1+|ρ|) ≤ 2, γ ∈ (0, ½], so
+  every fitted surface carries the no-static-arbitrage certificate
+  (`no_arbitrage()` also scans g(k) and ∂w/∂t numerically). Dupire local vol in
+  closed form (`local_vol`, `local_vol_grid`).
+- `chain`: `OptionChain`, `chain_from_rows` / `load_chain` (CSV or JSON; price,
+  mid, bid+ask or iv; texp or days; unusable quotes dropped with reasons),
+  `check_arbitrage` (bounds, vertical spreads, butterflies, calendars on the
+  call-equivalent prices) and `demo_chain()` — a seeded, synthetic Bates chain.
+- `calibration.cos.calibrate_model`: fits Black–Scholes, Merton, Variance
+  Gamma, NIG, Heston or Bates to a chain on vega-weighted out-of-the-money
+  price errors and reports exact implied-vol RMSE. Quotes whose model premium
+  is below double precision are counted, not inverted into a fictitious 0 vol.
+- `levenberg_marquardt(..., strict=False)` returns the best iterate instead of
+  raising.
+- Studio **Chain** page and `/api/chain`: load a chain, see the arbitrage scan,
+  SSVI certificate, per-expiry smiles (quotes, SSVI, models), local vs implied
+  vol, and a fit table ranked by RMSE.
+- `argentum chain FILE --spot S [--rate r --div q --models … --json]`.
+- `examples/sample_chain.csv` and a downloadable sample in Studio.
+
 ## 1.6.0 — 2026-11-22
 
 ### Added

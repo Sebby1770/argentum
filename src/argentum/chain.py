@@ -14,9 +14,13 @@ variance non-decreasing in expiry at fixed log-moneyness).
 
 from __future__ import annotations
 
+import csv
+import io
+import json
 import math
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -111,11 +115,16 @@ def chain_from_rows(
     rate: float = 0.0,
     div: float = 0.0,
 ) -> OptionChain:
-    """Build a chain from dict rows (CSV or JSON). Unusable quotes are dropped and reported."""
+    """Build a chain from dict rows (CSV or JSON). Unusable quotes are dropped and reported.
+
+    A row with both a premium and an ``iv`` keeps both as given; a row with
+    only one gets the other from Black–Scholes.
+    """
     spot = require_positive("spot", spot)
     rate = require_finite("rate", rate)
     div = require_finite("div", div)
     parsed: list[tuple[float, float, float, float | None, float | None]] = []
+    row_numbers: list[int] = []
     dropped: list[dict[str, Any]] = []
     for n, row in enumerate(rows, start=1):
         if n > MAX_QUOTES:
@@ -147,6 +156,7 @@ def chain_from_rows(
             if iv is not None and iv <= 0.0:
                 raise InputError("iv must be positive")
             parsed.append((texp, strike, omega, price, iv))
+            row_numbers.append(n)
         except InputError as exc:
             dropped.append({"row": n, "reason": str(exc)})
     if not parsed:
@@ -161,7 +171,14 @@ def chain_from_rows(
     ivs = np.where(has_iv, iv_in, implied_vol_array(np.maximum(prices, 0.0), spot, k, rate, div, t, w, errors="nan"))
     bad = ~np.isfinite(ivs) | (ivs <= 0.0) | (prices < 0.0)
     for i in np.flatnonzero(bad):
-        dropped.append({"row": None, "texp": float(t[i]), "strike": float(k[i]), "reason": "price outside no-arbitrage bounds or zero time value"})
+        dropped.append(
+            {
+                "row": row_numbers[i],
+                "texp": float(t[i]),
+                "strike": float(k[i]),
+                "reason": "price outside no-arbitrage bounds or zero time value",
+            }
+        )
     keep = ~bad
     if not np.any(keep):
         raise InputError("no quote in the chain has a valid implied vol")
@@ -177,6 +194,22 @@ def chain_from_rows(
         ivs[keep][order],
         tuple(dropped),
     )
+
+
+def load_chain(path: str | Path, *, spot: float, rate: float = 0.0, div: float = 0.0) -> OptionChain:
+    """Read a UTF-8 (BOM tolerated) ``.csv`` or ``.json`` chain file."""
+    source = Path(path)
+    if source.suffix.lower() not in {".csv", ".json"}:
+        raise InputError("chain file must end in .csv or .json")
+    text = source.read_text(encoding="utf-8-sig")
+    if source.suffix.lower() == ".json":
+        payload = json.loads(text)
+        rows = payload if isinstance(payload, list) else payload.get("rows") or payload.get("quotes")
+        if not isinstance(rows, list):
+            raise InputError("JSON chain must be a list or contain a rows/quotes list")
+    else:
+        rows = [{(k or "").strip().lower(): v for k, v in row.items()} for row in csv.DictReader(io.StringIO(text))]
+    return chain_from_rows(rows, spot=spot, rate=rate, div=div)
 
 
 def check_arbitrage(chain: OptionChain, *, tol: float = 1e-8) -> dict[str, Any]:
