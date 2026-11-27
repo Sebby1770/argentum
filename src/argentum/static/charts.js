@@ -101,6 +101,18 @@ function multiLineChart(canvas, xs, series, opts = {}) {
     ctx.setLineDash([]);
   }
   series.forEach((s) => {
+    if (s.dots) {
+      // Scatter series bring their own x values (quotes sit off the line grid).
+      ctx.fillStyle = s.color;
+      (s.xs || xs).forEach((x, i) => {
+        const y = s.ys[i];
+        if (y === null || !Number.isFinite(y) || x < xmin || x > xmax) return;
+        ctx.beginPath();
+        ctx.arc(xOf(x), yOf(y), s.radius || 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      return;
+    }
     ctx.strokeStyle = s.color;
     ctx.lineWidth = s.width || 1.5;
     ctx.beginPath();

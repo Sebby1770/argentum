@@ -206,6 +206,37 @@ Studio has a **Models** page (six smiles on one strip), a **VaR** panel on
 Portfolio (histogram with the VaR cut and the Greeks-only estimate beside
 it) and an LSM mark in the Lab.
 
+## From quotes to a surface
+
+```python
+from argentum.chain import load_chain, check_arbitrage
+from argentum.models.ssvi import fit_ssvi
+from argentum.calibration.cos import calibrate_model
+
+chain = load_chain("examples/sample_chain.csv", spot=100, rate=0.03, div=0.01)
+check_arbitrage(chain)["arbitrage_free"]           # bounds, verticals, butterflies, calendars
+
+surface = fit_ssvi(chain.log_moneyness, chain.texp, chain.iv)
+surface.no_arbitrage()["arbitrage_free"]           # True by construction (Gatheral–Jacquier)
+surface.local_vol(k=-0.2, t=0.5)                   # Dupire local vol, closed form
+
+fit = calibrate_model(chain, "bates")              # or heston, merton, variance_gamma, nig, black_scholes
+fit.params, fit.rmse_vol                           # exact implied-vol RMSE
+```
+
+On the bundled synthetic chain (Bates prices plus 0.2 vol-point noise),
+Bates recovers its generating parameters at the noise level (0.19 vp RMSE),
+Heston misses the short-dated put wing (1.3 vp), the pure-jump models land
+at 3–4 vp, flat Black–Scholes at 8 vp, and SSVI's three-parameter shape at
+0.8 vp. The same report from the shell:
+
+```bash
+argentum chain examples/sample_chain.csv --spot 100 --rate 0.03 --div 0.01 --models heston,bates
+```
+
+Studio's **Chain** page does it with charts: quotes as dots, SSVI and model
+smiles per expiry, local vs implied vol, and the arbitrage scan.
+
 ## CLI
 
 ```text
@@ -216,6 +247,7 @@ argentum swap --as-of 2026-08-24 --tenor 5Y --rate 0.04 --curve 0.04
 argentum heston --spot 100 --strike 100 --texp 1
 argentum quote AAPL
 argentum portfolio examples/sample_portfolio.csv --format json
+argentum chain examples/sample_chain.csv --spot 100 --rate 0.03 --div 0.01
 argentum studio --port 8787
 ```
 
@@ -231,10 +263,11 @@ src/argentum/
   engines/          finite difference, Monte Carlo, Longstaff–Schwartz
   instruments/      bond, swap, option, cap/floor, swaption, CDS, FX
   risk/             DV01, key-rate buckets, MC / historical VaR-ES, P&L explain
-  calibration/      Levenberg–Marquardt for SABR / SVI / Heston
+  calibration/      Levenberg–Marquardt; SABR / SVI fits; COS model calibration to chains
   feeds.py          demo, Stooq, vendor JSON, cache, circuit, ingest
   portfolio.py      validated CSV/JSON books and reproducible risk reports
-  studio.py         local desk (Front, lab, smile, models, book + VaR, watch, tape)
+  chain.py          option chains: load, implied vols, static-arbitrage scan
+  studio.py         local desk (Front, lab, smile, models, chain, book + VaR, watch, tape)
   static/           packaged Studio HTML, CSS, JavaScript, and media
 ```
 

@@ -53,3 +53,34 @@ def test_risk_payload_caps_scenarios_times_positions():
     rows = [{"spot": 100, "strike": 100 + i % 7, "vol": 0.2, "texp": 1} for i in range(50)]
     with pytest.raises(InputError, match="exceeds the Studio limit"):
         risk_payload({"positions": rows, "n": "100000"})
+
+
+def test_chain_payload_demo_fits_and_is_valid_json():
+    from argentum.studio import chain_payload
+
+    out = chain_payload({"models": ["heston", "bates"]})
+    json.dumps(out, allow_nan=False)
+    assert out["n_quotes"] == 75 and out["arbitrage"]["arbitrage_free"]
+    assert out["ssvi"]["certificate"]["arbitrage_free"]
+    assert [f["family"] for f in out["fits"]] == ["bates", "heston"]  # sorted by RMSE
+    first = out["slices"][0]
+    assert len(first["k"]) == len(first["ssvi_iv"]) == len(first["models"]["bates"])
+    # Each slice is drawn over its own quoted range, not the whole chain's.
+    assert min(first["k"]) > min(out["slices"][-1]["k"])
+
+
+def test_chain_payload_validates_uploads():
+    from argentum.studio import CHAIN_QUOTE_LIMIT, chain_payload
+
+    with pytest.raises(InputError):
+        chain_payload({"models": ["sabr"]})
+    with pytest.raises(InputError):
+        chain_payload({"rows": [{"texp": 1, "strike": 100, "iv": 0.2}] * (CHAIN_QUOTE_LIMIT + 1)})
+    small = chain_payload(
+        {
+            "rows": [{"texp": 0.5, "strike": k, "type": "call", "iv": 0.2 + 0.0005 * (100 - k)} for k in range(80, 125, 5)],
+            "spot": "100",
+            "models": "black_scholes",
+        }
+    )
+    assert small["n_quotes"] == 9 and small["fits"][0]["family"] == "black_scholes"

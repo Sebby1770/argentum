@@ -43,6 +43,22 @@
           <p>Fang–Oosterlee COS with the little-Heston-trap characteristic function so the complex logarithm stays principal-valued.</p>
         </article>
         <article class="card">
+          <h3>COS models</h3>
+          <p>One Fang–Oosterlee engine prices Black–Scholes, Merton, Variance Gamma, NIG, Heston and Bates from their characteristic functions. Heston matches the published 5.785155435 to nine digits; VG matches 19.099354724.</p>
+        </article>
+        <article class="card">
+          <h3>SSVI surface</h3>
+          <p>Gatheral–Jacquier SSVI with power-law φ. Fits keep θ<sub>t</sub> non-decreasing and η(1+|ρ|) ≤ 2, γ ≤ ½, so the surface is free of static arbitrage; Dupire local vol follows in closed form.</p>
+        </article>
+        <article class="card">
+          <h3>Chain arbitrage</h3>
+          <p>Every quote becomes a call price by parity, then: price bounds, verticals (slope between −DF and 0), butterflies (convexity) and calendars (total variance non-decreasing at fixed ln K/F).</p>
+        </article>
+        <article class="card">
+          <h3>American</h3>
+          <p>Bjerksund–Stensland 2002 (a lower bound, within 1.5% of a fine tree) and Longstaff–Schwartz, whose reported price uses an exercise rule fitted on independent paths — a lower bound with an honest error bar.</p>
+        </article>
+        <article class="card">
           <h3>Your market</h3>
           <p>
             Studio pulls a last print from a demo book, Stooq, or any HTTP JSON
@@ -59,9 +75,10 @@
       </p>
       <pre style="margin-top: 28px"><code>python3 -m argentum studio --port 8787
 python3 -m pytest -q
-python3 -m argentum vanilla --spot 100 --strike 100 --rate 0.05 --vol 0.2 --texp 1</code></pre>
+python3 -m argentum vanilla --spot 100 --strike 100 --rate 0.05 --vol 0.2 --texp 1
+python3 -m argentum chain examples/sample_chain.csv --spot 100 --rate 0.03 --div 0.01</code></pre>
     </main>
-    <footer>Argentum Docs · v1.6</footer>
+    <footer>Argentum Docs · v1.7</footer>
     <script src="/chrome.js"></script>
   </body>
 </html>
