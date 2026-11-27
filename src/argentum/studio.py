@@ -19,6 +19,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
+import numpy as np
+
 from argentum import __version__
 from argentum.errors import ArgentumError, InputError, MarketError
 from argentum.feeds import (
@@ -35,6 +37,9 @@ from argentum.instruments.swap import InterestRateSwap
 from argentum.book import Book, VanillaPosition
 from argentum.engines.fd import fd_price
 from argentum.engines.lsm import lsm_american
+from argentum.calibration.cos import FAMILIES, PRICE_FLOOR, calibrate_model
+from argentum.chain import chain_from_rows, check_arbitrage, demo_chain
+from argentum.models.ssvi import fit_ssvi
 from argentum.engines.montecarlo import gbm_european
 from argentum.instruments.cds import CreditDefaultSwap
 from argentum.models.barriers import barrier_price
@@ -402,6 +407,83 @@ def risk_payload(values: dict[str, Any]) -> dict[str, Any]:
         seed=int(_f(values, "seed", 7)),
     )
     return report
+
+
+CHAIN_QUOTE_LIMIT = 2_000
+CHAIN_EXPIRY_LIMIT = 40
+
+
+def chain_payload(values: dict[str, Any]) -> dict[str, Any]:
+    """Load a chain (posted rows or the synthetic demo), scan it, fit SSVI and models."""
+    raw = values.get("rows")
+    if isinstance(raw, list) and raw:
+        if len(raw) > CHAIN_QUOTE_LIMIT:
+            raise InputError(f"Studio fits at most {CHAIN_QUOTE_LIMIT} quotes; trim the chain")
+        chain = chain_from_rows(
+            raw, spot=_f(values, "spot", 100.0), rate=_f(values, "rate", 0.0), div=_f(values, "div", 0.0)
+        )
+        source = "uploaded"
+    else:
+        chain = demo_chain()
+        source = "demo (synthetic Bates chain, seeded noise)"
+    if chain.expiries.size > CHAIN_EXPIRY_LIMIT:
+        raise InputError(f"Studio fits at most {CHAIN_EXPIRY_LIMIT} expiries")
+    wanted = values.get("models", ["heston", "bates"])
+    if isinstance(wanted, str):
+        wanted = [m.strip() for m in wanted.split(",") if m.strip()]
+    if not isinstance(wanted, list) or any(m not in FAMILIES for m in wanted):
+        raise InputError(f"models must be a list drawn from {sorted(FAMILIES)}")
+    wanted = list(dict.fromkeys(wanted))[: len(FAMILIES)]
+
+    arbitrage = check_arbitrage(chain)
+    k, t, iv = chain.log_moneyness, chain.texp, chain.iv
+    ssvi = fit_ssvi(k, t, iv) if chain.size >= 5 else None
+    fits = [calibrate_model(chain, fam) for fam in wanted]
+
+    slices = []
+    for te in chain.expiries:
+        te = float(te)
+        sel = chain.texp == te
+        # Each expiry is drawn over its own quoted range: far-wing strikes of a
+        # short expiry have premiums below double precision and no usable vol.
+        k_lo, k_hi = float(np.min(k[sel])), float(np.max(k[sel]))
+        pad = 0.05 * max(k_hi - k_lo, 0.05)
+        grid = np.linspace(k_lo - pad, k_hi + pad, 41)
+        row: dict[str, Any] = {
+            "texp": te,
+            "quotes": {"k": k[sel].tolist(), "iv": iv[sel].tolist(), "strike": chain.strike[sel].tolist()},
+            "k": grid.tolist(),
+        }
+        if ssvi is not None:
+            row["ssvi_iv"] = ssvi.implied_vol(grid, te).tolist()
+            try:
+                row["local_vol"] = ssvi.local_vol(grid, te).tolist()
+            except InputError:
+                row["local_vol"] = None
+        strikes = chain.forward(te) * np.exp(grid)
+        row["models"] = {}
+        for fit in fits:
+            smile = model_smile(fit.model, chain.spot, strikes, chain.rate, chain.div, te, n_terms=256)
+            otm = np.where(grid >= 0.0, smile["call"], smile["put"])
+            row["models"][fit.family] = [
+                None if (not math.isfinite(v) or px <= PRICE_FLOOR * chain.spot) else float(v)
+                for v, px in zip(smile["implied_vol"], otm)
+            ]
+        slices.append(row)
+    return {
+        "source": source,
+        "spot": chain.spot,
+        "rate": chain.rate,
+        "div": chain.div,
+        "n_quotes": chain.size,
+        "dropped": list(chain.dropped)[:50],
+        "n_dropped": len(chain.dropped),
+        "expiries": chain.expiries.tolist(),
+        "arbitrage": arbitrage,
+        "ssvi": None if ssvi is None else {**ssvi.as_dict(), "certificate": ssvi.no_arbitrage()},
+        "fits": sorted((fit.as_dict() for fit in fits), key=lambda f: f["rmse_vol"]),
+        "slices": slices,
+    }
 
 
 def _demo_book() -> Book:
@@ -837,6 +919,8 @@ class StudioHandler(BaseHTTPRequestHandler):
                     self._json(models_payload(qs))
                 elif path == "/api/risk":
                     self._json(risk_payload(qs))
+                elif path == "/api/chain":
+                    self._json(chain_payload(qs))
                 elif path == "/api/quote":
                     self._json(quote_payload(qs))
                 elif path == "/api/feed":
@@ -877,6 +961,8 @@ class StudioHandler(BaseHTTPRequestHandler):
                 self._json(models_payload(body))
             elif parsed.path == "/api/risk":
                 self._json(risk_payload(body))
+            elif parsed.path == "/api/chain":
+                self._json(chain_payload(body))
             elif parsed.path == "/api/quote":
                 self._json(quote_payload(body))
             elif parsed.path == "/api/feed":
@@ -929,6 +1015,7 @@ class StudioHandler(BaseHTTPRequestHandler):
             "credit": "credit.html",
             "book": "book.html",
             "models": "models.html",
+            "chain": "chain.html",
             "surface": "surface.html",
             "connect": "index.html",
             "manifest.json": "manifest.json",

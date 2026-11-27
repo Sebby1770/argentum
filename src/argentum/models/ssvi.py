@@ -160,11 +160,11 @@ def ssvi_from_params(
 
 
 def fit_ssvi(
-    k: Sequence[float],
-    t: Sequence[float],
-    iv: Sequence[float],
+    k: Sequence[float] | np.ndarray,
+    t: Sequence[float] | np.ndarray,
+    iv: Sequence[float] | np.ndarray,
     *,
-    weights: Sequence[float] | None = None,
+    weights: Sequence[float] | np.ndarray | None = None,
     enforce_no_arbitrage: bool = True,
 ) -> SSVISurface:
     """Fit SSVI to implied vols at log-moneyness ``k`` and expiry ``t``.

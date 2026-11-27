@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Load an option chain, scan it for static arbitrage, fit an arbitrage-free SSVI surface and six pricing models, and read Dupire local vol — locally in Argentum Studio." />
+    <title>Chain — Argentum</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="top">
+      <a class="wordmark" href="/"><span class="bar" aria-hidden="true"></span>Argentum</a>
+      <nav aria-label="Studio"></nav>
+    </header>
+    <main class="wrap desk" id="main">
+      <form class="panel" id="form">
+        <p class="eyebrow">Quotes → surface</p>
+        <h1 class="desk-title">Fit a chain.</h1>
+        <p class="note">Load quotes for one underlying. Argentum checks them for static arbitrage, fits an SSVI surface that is arbitrage-free by construction, calibrates the models you pick, and derives Dupire local vol. With no file it uses a synthetic, seeded chain.</p>
+        <label>Chain file (CSV or JSON)
+          <input id="chain-file" type="file" accept=".csv,.json,text/csv,application/json" />
+        </label>
+        <p class="note" id="file-status">Columns: texp (or days), strike, type, and price, mid, bid+ask, or iv.</p>
+        <fieldset class="params">
+          <legend>Underlying</legend>
+          <label>Spot <input name="spot" type="number" step="any" value="100" /></label>
+          <label>Rate <input name="rate" type="number" step="any" value="0.03" /></label>
+          <label>Dividend yield <input name="div" type="number" step="any" value="0.01" /></label>
+        </fieldset>
+        <fieldset class="params" id="model-picks">
+          <legend>Models to calibrate</legend>
+          <label class="check"><input type="checkbox" name="models" value="bates" checked /> Bates</label>
+          <label class="check"><input type="checkbox" name="models" value="heston" checked /> Heston</label>
+          <label class="check"><input type="checkbox" name="models" value="merton" /> Merton jumps</label>
+          <label class="check"><input type="checkbox" name="models" value="variance_gamma" /> Variance Gamma</label>
+          <label class="check"><input type="checkbox" name="models" value="nig" /> NIG</label>
+          <label class="check"><input type="checkbox" name="models" value="black_scholes" /> Black–Scholes</label>
+        </fieldset>
+        <div class="cta-row compact">
+          <button class="btn" type="submit">Fit the chain</button>
+        </div>
+        <a href="/sample-chain.csv" download>Download the sample chain</a>
+        <p class="err" id="err" role="alert"></p>
+      </form>
+      <div>
+        <div class="metrics" id="metrics"></div>
+        <p class="note" id="summary"></p>
+        <label class="inline">Expiry
+          <select id="expiry"></select>
+        </label>
+        <div class="legend" id="legend" aria-label="Series shown"></div>
+        <canvas class="chart" id="smile" width="900" height="320" aria-label="Implied vol by log-moneyness: quotes, SSVI and model fits"></canvas>
+        <h2 class="sub">Local vs implied volatility</h2>
+        <canvas class="chart" id="local" width="900" height="240" aria-label="Dupire local volatility and SSVI implied volatility for the selected expiry"></canvas>
+        <h2 class="sub">Model fits</h2>
+        <div class="table-scroll"><table class="data" id="fits"></table></div>
+        <h2 class="sub">Static arbitrage in the quotes</h2>
+        <div class="table-scroll"><table class="data" id="arb"></table></div>
+      </div>
+    </main>
+    <footer>Argentum Chain · SSVI (Gatheral–Jacquier 2014) · COS calibration · Dupire local vol</footer>
+    <script src="/chrome.js"></script>
+    <script src="/charts.js"></script>
+    <script src="/chain.js"></script>
+  </body>
+</html>

@@ -9,6 +9,7 @@ const ARGENTUM_LINKS = [
   ["/bond", "Bond"],
   ["/credit", "Credit"],
   ["/models", "Models"],
+  ["/chain", "Chain"],
   ["/book", "Portfolio"],
   ["/docs", "Docs"],
 ];
